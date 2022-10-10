@@ -1,0 +1,13 @@
+architecture: standalone
+auth:
+  database: code-validator
+
+## @param initdbScripts [object] Dictionary of initdb scripts
+## Specify dictionary of scripts to be run at first boot
+## Example:
+## initdbScripts:
+##   my_init_script.sh: |
+##      #!/bin/bash
+##      echo "Do something."
+##
+initdbScripts: {}
