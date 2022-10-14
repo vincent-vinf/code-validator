@@ -2,7 +2,7 @@ FROM golang:1.18 as builder
 
 WORKDIR /app
 
-ADD .. /app
+ADD . /app
 
 RUN mkdir -p "bin" && \
     go build -o bin/access-service cmd/access/main.go && \

@@ -18,6 +18,8 @@
    * yum install -y libcap-devel
    * apt update && apt install -y libcap-dev
 3. make install
+4. 清理
+   * rm -rf /var/lib/apt/lists/*
 
 ### 问题
 * 多文件支持？
@@ -25,3 +27,13 @@
 
 ### TODO
 * 沙箱包装实现
+  * 需要cgroup，所以docker run --privileged
+
+
+
+```bash
+isolate --run --stderr-to-stdout -o /tmp/o -- /bin/echo "123" > /tmp/123
+
+docker run -it --rm --privileged registry.cn-shanghai.aliyuncs.com/codev/js-executor:0.0.1 bash
+```
+

@@ -1,6 +1,7 @@
-TAG = test-$(shell git log -1 --format=%h)
+#TAG = test-$(shell git log -1 --format=%h)
+TAG = 0.0.1
 WORK_DIR = .
-REGISTRY = registry.cn-qingdao.aliyuncs.com/codev
+REGISTRY = registry.cn-shanghai.aliyuncs.com/codev
 
 NAMESPACE=code-validator
 
@@ -11,11 +12,14 @@ build_push: all_image push
 access_image:
 	docker build --target access -t $(REGISTRY)/spike-access-service:$(TAG) $(WORK_DIR)
 
+js-executor:
+	docker build -t $(REGISTRY)/js-executor:$(TAG) -f ./dockerfile/js-executor.dockerfile $(WORK_DIR)
+
 push:
 	docker push $(REGISTRY)/spike-access-service:$(TAG)
 
 tar_chart:
-	 tar -zcvf spike-chart-$(TAG).tar.gz -C ./helm .
+	tar -zcvf spike-chart-$(TAG).tar.gz -C ./helm .
 
 echo:
 	echo $(TAG)
