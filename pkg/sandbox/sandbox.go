@@ -1,4 +1,4 @@
 package sandbox
 
-type Sandbox struct {
+type Sandbox interface {
 }

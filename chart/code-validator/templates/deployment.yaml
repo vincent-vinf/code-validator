@@ -1,0 +1,41 @@
+{{- range .Values.microservices}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: spike-{{ .name }}
+spec:
+  selector:
+    matchLabels:
+      app: spike-{{ .name }}
+  replicas: {{ .replicaCount }}
+  template:
+    metadata:
+      labels:
+        app: spike-{{ .name }}
+        date: "{{ now | unixEpoch }}"
+    spec:
+      containers:
+        - name: {{ .name }}
+          image: {{ .image}}
+          imagePullPolicy: {{ $.Values.pullPolicy }}
+          {{- with .command }}
+          command:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - mountPath: /configs
+              name: access-service-volume
+          ports:
+            {{- range .service }}
+            - containerPort: {{.}}
+            {{- end }}
+      {{- with $.Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        - name: access-service-volume
+          configMap:
+            name: spike-config
+---
+{{- end}}

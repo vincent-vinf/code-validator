@@ -1,6 +1,6 @@
 architecture: standalone
 auth:
-  database: code-validator
+  database: code_validator
 
 ## @param initdbScripts [object] Dictionary of initdb scripts
 ## Specify dictionary of scripts to be run at first boot

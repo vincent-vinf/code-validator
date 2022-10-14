@@ -1,0 +1,61 @@
+# Default values for helm.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+pullPolicy: Always
+
+microservices:
+  - name: access-service
+    replicaCount: 1
+    image: registry.cn-qingdao.aliyuncs.com/adpc/spike-access-service:latest
+    command:
+      - /access-service
+      - --rpc-port=8081
+      - --config-path=/configs/config.yaml
+    service:
+      - 8081
+
+  - name: admin-service
+    replicaCount: 1
+    image: registry.cn-qingdao.aliyuncs.com/adpc/spike-admin-service:latest
+    command:
+      - /admin-service
+      - --port=8080
+      - --config-path=/configs/config.yaml
+    service:
+      - 8080
+
+  - name: order-service
+    replicaCount: 2
+    image: registry.cn-qingdao.aliyuncs.com/adpc/spike-order-service:latest
+    command:
+      - /order-service
+      - --port=8080
+      - --config-path=/configs/config.yaml
+    service:
+      - 8080
+
+  - name: spike-service
+    replicaCount: 2
+    image: registry.cn-qingdao.aliyuncs.com/adpc/spike-spike-service:latest
+    command:
+      - /spike-service
+      - --port=8080
+      - --config-path=/configs/config.yaml
+      - --access-endpoint=spike-access-service.default.svc:8081
+    service:
+      - 8080
+
+  - name: user-service
+    replicaCount: 1
+    image: registry.cn-qingdao.aliyuncs.com/adpc/spike-user-service:latest
+    command:
+      - /user-service
+      - --port=8080
+      - --config-path=/configs/config.yaml
+      - --access-endpoint=spike-access-service.default.svc:8081
+    service:
+      - 8080
+
+imagePullSecrets: []
+

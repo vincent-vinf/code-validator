@@ -16,7 +16,7 @@ push:
 
 tar_chart:
 	 tar -zcvf spike-chart-$(TAG).tar.gz -C ./helm .
-	 
+
 echo:
 	echo $(TAG)
 

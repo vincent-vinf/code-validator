@@ -1,0 +1,17 @@
+{{- range .Values.microservices}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: spike-{{ .name }}
+spec:
+  type: NodePort
+  ports:
+    {{- range .service }}
+    - port: {{ . }}
+      targetPort: {{ . }}
+      protocol: TCP
+    {{- end }}
+  selector:
+    app: spike-{{ .name }}
+---
+{{- end}}
