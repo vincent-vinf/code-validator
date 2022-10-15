@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sirupsen/logrus"
+	"github.com/vincent-vinf/code-validator/pkg/util/log"
 )
 
 const (
@@ -22,13 +22,16 @@ const (
 )
 
 var (
-	logger = logrus.New()
+	logger = log.GetLogger()
 )
 
 type Sandbox interface {
 	Init() error
 	Run(cmd string, args []string, opts ...Option) error
 	Clean() error
+
+	WriteFile(filepath string, data []byte) error
+	ReadFile(filepath string) ([]byte, error)
 
 	GetID() int
 }
@@ -60,7 +63,7 @@ func (i *Isolate) Init() error {
 	} else {
 		i.workdir = strings.TrimSpace(string(data))
 	}
-	logger.Info("workdir:", i.workdir)
+	logger.Debug("workdir: ", i.workdir)
 
 	return nil
 }
@@ -72,7 +75,6 @@ func (i *Isolate) Clean() error {
 	return nil
 }
 func (i *Isolate) Run(cmd string, args []string, opts ...Option) error {
-	// todo 默认值
 	r := &run{
 		// share network
 		enableNetwork:  true,
@@ -88,7 +90,7 @@ func (i *Isolate) Run(cmd string, args []string, opts ...Option) error {
 	gArgs := r.getArgs()
 	gArgs = append(gArgs, fmt.Sprintf("-b %d", i.id), "-s", "--dir=/etc=/etc:noexec", "--run", "--", cmd)
 	gArgs = append(gArgs, args...)
-	logger.Info(gArgs)
+	logger.Debug(gArgs)
 
 	c := exec.Command("isolate", gArgs...)
 	c.Stdin = r.stdin
@@ -131,20 +133,18 @@ func (i *Isolate) pathConvert(filepath string) string {
 }
 func (i *Isolate) initFile(filepath string) error {
 	filepath = path.Clean(filepath)
-	var out, eBuf bytes.Buffer
+	var outBuf, errBuf bytes.Buffer
 
 	err := i.Run("/bin/sh",
 		[]string{"-c", fmt.Sprintf("mkdir -p %s && touch %s", path.Dir(filepath), filepath)},
 		Env(map[string]string{
 			"PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
 		}),
-		Stdout(&out),
-		Stderr(&eBuf),
+		Stdout(&outBuf),
+		Stderr(&errBuf),
 	)
-	logger.Info("out:", out.String())
-	logger.Info("err:", eBuf.String())
 	if err != nil {
-		return err
+		return fmt.Errorf("init file err, stdout: %s, stderr: %s, %w", outBuf.String(), errBuf.String(), err)
 	}
 
 	return nil
@@ -171,18 +171,20 @@ type run struct {
 
 func (r *run) getArgs() (args []string) {
 	if r.metadata != "" {
-		args = append(args, "-M "+r.metadata)
+		args = append(args, "--meta="+r.metadata)
 	}
 	if r.enableNetwork {
 		args = append(args, "--share-net")
 	}
 	if r.fileSize > 0 {
-		args = append(args, fmt.Sprintf("-f %d", r.fileSize))
+		args = append(args, fmt.Sprintf("--fsize=%d", r.fileSize))
 	}
 
-	args = append(args) //fmt.Sprintf("--time=%2f", r.timeLimit.Seconds()),
-	//fmt.Sprintf("--extra-time=%2f", r.extraTimeLimit.Seconds()),
-	//fmt.Sprintf("--wall-time=%2f", r.wallTimeLimit.Seconds()),
+	args = append(args,
+		fmt.Sprintf("--time=%2f", r.timeLimit.Seconds()),
+		fmt.Sprintf("--extra-time=%2f", r.extraTimeLimit.Seconds()),
+		fmt.Sprintf("--wall-time=%2f", r.wallTimeLimit.Seconds()),
+	)
 
 	if r.processes <= 0 {
 		args = append(args, "-p")

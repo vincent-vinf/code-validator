@@ -5,8 +5,9 @@ import (
 	"time"
 
 	"github.com/fsnotify/fsnotify"
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
+
+	"github.com/vincent-vinf/code-validator/pkg/util/log"
 )
 
 var (
@@ -14,7 +15,7 @@ var (
 	once   sync.Once
 	rwLock sync.RWMutex
 
-	logger = logrus.New()
+	logger = log.GetLogger()
 )
 
 func Init(configPath string) {

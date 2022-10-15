@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 
-	"code-validator/pkg/util/config"
+	"github.com/vincent-vinf/code-validator/pkg/util/config"
 )
 
 var (

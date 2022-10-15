@@ -1,4 +1,4 @@
-module code-validator
+module github.com/vincent-vinf/code-validator
 
 go 1.18
 
