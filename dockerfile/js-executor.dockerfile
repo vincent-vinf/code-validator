@@ -3,6 +3,7 @@ WORKDIR /app
 ADD . /app
 RUN go build -o bin/sandbox cmd/sandbox-test/main.go && \
     go build -o bin/validator cmd/validator-test/main.go && \
+    go build -o bin/code-validator cmd/code-validator/main.go && \
     go build -o bin/pipeline cmd/pipeline-test/main.go
 
 FROM node

@@ -1,5 +1,5 @@
 package types
 
 const (
-	RuntimeJavaScript = "javascript"
+	JavaScriptRuntime = "javascript"
 )

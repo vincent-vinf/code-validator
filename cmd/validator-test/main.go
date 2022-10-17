@@ -12,10 +12,27 @@ var (
 
 func main() {
 	t := &types.Task{
-		Init:    types.Step{},
-		Run:     types.Code{},
-		Verify:  types.Validator{},
-		Runtime: types.RuntimeJavaScript,
+		Init: nil,
+		Run: types.Code{
+			Source: types.FileSource{
+				Raw: &types.Raw{Content: []byte("console.log('Hello World');\n")},
+			},
+		},
+		Verify: types.Validator{
+			Default: &types.DefaultValidator{
+				Name: types.ExactMatchValidator,
+			},
+		},
+		Runtime: types.JavaScriptRuntime,
+		Files: []types.File{
+			{
+				Name: "expected-output",
+				Path: "./expected-output",
+				Source: types.FileSource{
+					Raw: &types.Raw{Content: []byte("Hello World")},
+				},
+			},
+		},
 	}
 	v, err := validator.New(1, t)
 	if err != nil {
@@ -26,5 +43,5 @@ func main() {
 		panic(err)
 	}
 
-	logger.Info(report)
+	logger.Info(report.Result)
 }

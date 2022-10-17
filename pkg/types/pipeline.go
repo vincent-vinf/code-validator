@@ -1,9 +1,11 @@
 package types
 
+import "fmt"
+
 type Pipeline struct {
-	Name      string
-	Steps     []Step
-	InputFile []File
+	Name  string
+	Steps []Step
+	Files []File
 }
 
 type Step struct {
@@ -21,16 +23,28 @@ type File struct {
 	Source FileSource
 }
 
+func (f *File) Read() ([]byte, error) {
+	if f.Source.Raw != nil {
+		return f.Source.Raw.Content, nil
+	} else if f.Source.OSS != nil {
+		return []byte{}, nil
+	} else if f.Source.URL != nil {
+		return []byte{}, nil
+	} else {
+		return nil, fmt.Errorf("unknown file(%s) source", f.Name)
+	}
+}
+
 type FileSource struct {
-	URL  *URL  `json:"url"`
-	Text *Text `json:"text"`
-	OSS  *OSS  `json:"oss"`
+	URL *URL `json:"url"`
+	Raw *Raw `json:"raw"`
+	OSS *OSS `json:"oss"`
 }
 type URL struct {
 	Src string `json:"src"`
 }
-type Text struct {
-	Content string `json:"content"`
+type Raw struct {
+	Content []byte `json:"content"`
 }
 type OSS struct {
 	Path string `json:"path"`

@@ -28,7 +28,15 @@ func NewController(box sandbox.Sandbox) (*Controller, error) {
 	}, nil
 }
 
-func (e Controller) Exec(pipeline types.Pipeline) error {
+func (e *Controller) ReadFile(filepath string) ([]byte, error) {
+	return e.box.ReadFile(filepath)
+}
+
+func (e *Controller) WriteFile(filepath string, data []byte) error {
+	return e.box.WriteFile(filepath, data)
+}
+
+func (e *Controller) Exec(pipeline types.Pipeline) error {
 	err := e.box.Init()
 	if err != nil {
 		return err
@@ -40,19 +48,14 @@ func (e Controller) Exec(pipeline types.Pipeline) error {
 	//	}
 	//}(e.box)
 
-	for _, file := range pipeline.InputFile {
-		if file.Source.Text != nil {
-			if err = e.box.WriteFile(file.Path, []byte(file.Source.Text.Content)); err != nil {
-				return err
-			}
-		} else if file.Source.OSS != nil {
+	for _, file := range pipeline.Files {
+		data, err := file.Read()
+		if err != nil {
+			logger.Error(err)
 			continue
-		} else if file.Source.URL != nil {
-			continue
-		} else {
-			logger.Errorf("unknown file(%s) source, skip it", file.Name)
-
-			continue
+		}
+		if err = e.box.WriteFile(file.Path, data); err != nil {
+			return err
 		}
 	}
 
@@ -69,7 +72,7 @@ func (e Controller) Exec(pipeline types.Pipeline) error {
 		}
 		var outBuf, errBuf bytes.Buffer
 
-		if err = e.box.Run(step.Cmd, step.Args,
+		err = e.box.Run(step.Cmd, step.Args,
 			sandbox.Network(true),
 			sandbox.Stdin(inReader),
 			sandbox.Stdout(&outBuf),
@@ -78,17 +81,17 @@ func (e Controller) Exec(pipeline types.Pipeline) error {
 				"HOME": "/tmp",
 				"PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
 			}),
-		); err != nil {
-			return err
-		}
-
+		)
 		for p, data := range map[string][]byte{
 			fmt.Sprintf("./std-%s/stdout", step.Name): outBuf.Bytes(),
 			fmt.Sprintf("./std-%s/stderr", step.Name): errBuf.Bytes(),
 		} {
-			if err = e.box.WriteFile(p, data); err != nil {
-				return err
+			if err := e.box.WriteFile(p, data); err != nil {
+				logger.Error(err)
 			}
+		}
+		if err != nil {
+			return err
 		}
 	}
 

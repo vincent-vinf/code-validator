@@ -26,7 +26,7 @@ func main() {
 		panic(err)
 	}
 
-	scripte := `
+	script := `
 const readline = require('readline').createInterface({
     input: process.stdin,
     output: process.stdout
@@ -43,10 +43,10 @@ readline.question('Who are you?', name => {` +
 		Steps: []types.Step{
 			{
 				Name: "init",
-				Cmd:  "/bin/sh",
+				Cmd:  "/usr/local/bin/npm",
 				Args: []string{
-					"-c",
-					"npm init -y",
+					"init",
+					"-y",
 				},
 			},
 			{
@@ -59,13 +59,13 @@ readline.question('Who are you?', name => {` +
 				StdinFile: "./test-file",
 			},
 		},
-		InputFile: []types.File{
+		Files: []types.File{
 			{
 				Name: "test-file",
 				Path: "./test-file",
 				Source: types.FileSource{
-					Text: &types.Text{
-						Content: "Vincent\n",
+					Raw: &types.Raw{
+						Content: []byte("Vincent\n"),
 					},
 				},
 			},
@@ -73,8 +73,8 @@ readline.question('Who are you?', name => {` +
 				Name: "index.js",
 				Path: "./index.js",
 				Source: types.FileSource{
-					Text: &types.Text{
-						Content: scripte,
+					Raw: &types.Raw{
+						Content: []byte(script),
 					},
 				},
 			},

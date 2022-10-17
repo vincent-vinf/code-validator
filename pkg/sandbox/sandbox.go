@@ -248,6 +248,7 @@ func FileSize(kb int) Option {
 	return func(r *run) {
 		r.fileSize = kb
 	}
+
 }
 func Env(kv map[string]string) Option {
 	return func(r *run) {
