@@ -5,7 +5,8 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/vincent-vinf/code-validator/pkg/executor"
+	"github.com/vincent-vinf/code-validator/pkg/pipeline"
+
 	"github.com/vincent-vinf/code-validator/pkg/sandbox"
 	"github.com/vincent-vinf/code-validator/pkg/types"
 )
@@ -20,7 +21,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	e, err := executor.New(box)
+	e, err := pipeline.NewController(box)
 	if err != nil {
 		panic(err)
 	}
@@ -37,7 +38,7 @@ readline.question('Who are you?', name => {` +
 });
 `
 
-	t := types.Task{
+	t := types.Pipeline{
 		Name: "test-task",
 		Steps: []types.Step{
 			{
@@ -50,9 +51,10 @@ readline.question('Who are you?', name => {` +
 			},
 			{
 				Name: "run",
-				Cmd:  "/usr/local/bin/node",
+				Cmd:  "/bin/sh",
 				Args: []string{
-					"./script",
+					"-c",
+					"node ./index.js",
 				},
 				StdinFile: "./test-file",
 			},
@@ -68,8 +70,8 @@ readline.question('Who are you?', name => {` +
 				},
 			},
 			{
-				Name: "script",
-				Path: "./script",
+				Name: "index.js",
+				Path: "./index.js",
 				Source: types.FileSource{
 					Text: &types.Text{
 						Content: scripte,

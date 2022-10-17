@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"io/ioutil"
+	"os"
 	"os/exec"
 	"path"
 	"strings"
@@ -34,6 +34,10 @@ type Sandbox interface {
 	ReadFile(filepath string) ([]byte, error)
 
 	GetID() int
+}
+
+func New(id int) (Sandbox, error) {
+	return NewIsolate(id)
 }
 
 func NewIsolate(id int) (*Isolate, error) {
@@ -78,9 +82,9 @@ func (i *Isolate) Run(cmd string, args []string, opts ...Option) error {
 	r := &run{
 		// share network
 		enableNetwork:  true,
-		timeLimit:      time.Second * 10,
-		wallTimeLimit:  time.Second * 20,
-		extraTimeLimit: time.Second * 20,
+		timeLimit:      time.Minute,
+		wallTimeLimit:  time.Minute * 10,
+		extraTimeLimit: time.Minute * 2,
 		// unlimited processes
 		processes: 0,
 	}
@@ -113,10 +117,10 @@ func (i *Isolate) WriteFile(filepath string, data []byte) error {
 		return err
 	}
 
-	return ioutil.WriteFile(i.pathConvert(filepath), data, defaultFileMode)
+	return os.WriteFile(i.pathConvert(filepath), data, defaultFileMode)
 }
 func (i *Isolate) ReadFile(filepath string) ([]byte, error) {
-	return ioutil.ReadFile(i.pathConvert(filepath))
+	return os.ReadFile(i.pathConvert(filepath))
 }
 func (i *Isolate) pathConvert(filepath string) string {
 	if path.IsAbs(filepath) {
@@ -181,9 +185,9 @@ func (r *run) getArgs() (args []string) {
 	}
 
 	args = append(args,
-		fmt.Sprintf("--time=%2f", r.timeLimit.Seconds()),
-		fmt.Sprintf("--extra-time=%2f", r.extraTimeLimit.Seconds()),
-		fmt.Sprintf("--wall-time=%2f", r.wallTimeLimit.Seconds()),
+		fmt.Sprintf("--time=%.2f", r.timeLimit.Seconds()),
+		fmt.Sprintf("--extra-time=%.2f", r.extraTimeLimit.Seconds()),
+		fmt.Sprintf("--wall-time=%.2f", r.wallTimeLimit.Seconds()),
 	)
 
 	if r.processes <= 0 {

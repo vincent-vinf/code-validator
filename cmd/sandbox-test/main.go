@@ -26,14 +26,9 @@ func main() {
 		panic(err)
 	}
 
-	err = s.WriteFile("./in", []byte("123"))
-	if err != nil {
-		panic(err)
-	}
-
 	var out, eBuf bytes.Buffer
 
-	err = s.Run("/bin/sh", []string{"-c", "cat < ./in"},
+	err = s.Run("/bin/sh", []string{"-c", "npm install -g ping"},
 		sandbox.Network(true),
 		sandbox.Stdout(&out),
 		sandbox.Stderr(&eBuf),

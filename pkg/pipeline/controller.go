@@ -1,4 +1,4 @@
-package executor
+package pipeline
 
 import (
 	"bytes"
@@ -14,32 +14,33 @@ var (
 	logger = log.GetLogger()
 )
 
-type Executor struct {
+type Controller struct {
 	box sandbox.Sandbox
 }
 
-func New(box sandbox.Sandbox) (*Executor, error) {
+func NewController(box sandbox.Sandbox) (*Controller, error) {
 	if box == nil {
 		return nil, fmt.Errorf("sandbox must be specified")
 	}
 
-	return &Executor{
+	return &Controller{
 		box: box,
 	}, nil
 }
 
-func (e Executor) Exec(task types.Task) error {
+func (e Controller) Exec(pipeline types.Pipeline) error {
 	err := e.box.Init()
 	if err != nil {
 		return err
 	}
+	// todo clean
 	//defer func(box sandbox.Sandbox) {
 	//	if err := box.Clean(); err != nil {
 	//		logger.Errorf("clean sandbox err: %s", err)
 	//	}
 	//}(e.box)
 
-	for _, file := range task.InputFile {
+	for _, file := range pipeline.InputFile {
 		if file.Source.Text != nil {
 			if err = e.box.WriteFile(file.Path, []byte(file.Source.Text.Content)); err != nil {
 				return err
@@ -55,8 +56,8 @@ func (e Executor) Exec(task types.Task) error {
 		}
 	}
 
-	logger.Infof("====run task: %s====", task.Name)
-	for _, step := range task.Steps {
+	logger.Infof("====run pipeline: %s====", pipeline.Name)
+	for _, step := range pipeline.Steps {
 		logger.Infof("====step: %s====", step.Name)
 		var inReader io.Reader
 		if step.StdinFile != "" {
@@ -82,8 +83,8 @@ func (e Executor) Exec(task types.Task) error {
 		}
 
 		for p, data := range map[string][]byte{
-			fmt.Sprintf("./std-descriptor-%s/stdout", step.Name): outBuf.Bytes(),
-			fmt.Sprintf("./std-descriptor-%s/stderr", step.Name): errBuf.Bytes(),
+			fmt.Sprintf("./std-%s/stdout", step.Name): outBuf.Bytes(),
+			fmt.Sprintf("./std-%s/stderr", step.Name): errBuf.Bytes(),
 		} {
 			if err = e.box.WriteFile(p, data); err != nil {
 				return err

@@ -1,49 +1,28 @@
 package types
 
 type Task struct {
-	Name      string
-	Steps     []Step
-	InputFile []File
+	// step
+	Init   Step
+	Run    Code
+	Verify Validator
+
+	Runtime string
 }
 
-type Step struct {
-	Name      string
-	Cmd       string
-	Args      []string
-	Type      string
-	StdinFile string
+type Code struct {
 }
 
-type File struct {
+type Validator struct {
+	Custom  *Step
+	Default *DefaultValidator
+}
+
+type DefaultValidator struct {
 	Name string
-	// path in sandbox
-	Path   string
-	Source FileSource
 }
 
-type FileSource struct {
-	URL  *URL  `json:"url"`
-	Text *Text `json:"text"`
-	OSS  *OSS  `json:"oss"`
+type Report struct {
+	Status   string
+	Result   string
+	Messages []string
 }
-type URL struct {
-	Src string `json:"src"`
-}
-type Text struct {
-	Content string `json:"content"`
-}
-type OSS struct {
-	Path string `json:"path"`
-}
-
-//{
-//"url":{
-//"src":""
-//},
-//"text":{
-//"content":""
-//},
-//"oss":{
-//"path":""
-//}
-//}
