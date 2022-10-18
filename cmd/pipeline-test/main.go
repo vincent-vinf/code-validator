@@ -26,43 +26,32 @@ func main() {
 		panic(err)
 	}
 
-	script := `
-const readline = require('readline').createInterface({
-    input: process.stdin,
-    output: process.stdout
-});
-
-readline.question('Who are you?', name => {` +
-		"    console.log(`Hey there ${name}!`);" + `
-    readline.close();
-});
-`
-
-	t := types.Pipeline{
+	t := &types.Pipeline{
 		Name: "test-task",
-		Steps: []types.Step{
+		Steps: []*types.Step{
 			{
 				Name: "init",
-				Cmd:  "/usr/local/bin/npm",
+				Cmd:  "/bin/ls",
 				Args: []string{
-					"init",
-					"-y",
+					"./",
+				},
+				MountFiles: []string{
+					"default",
 				},
 			},
 			{
 				Name: "run",
-				Cmd:  "/bin/sh",
+				Cmd:  "/bin/ls",
 				Args: []string{
-					"-c",
-					"node ./index.js",
+					"./",
 				},
-				StdinFile: "./test-file",
+				MountFiles: []string{},
 			},
 		},
-		Files: []types.File{
+		Files: []*types.File{
 			{
-				Name: "test-file",
-				Path: "./test-file",
+				Name: "default",
+				Path: "./default",
 				Source: types.FileSource{
 					Raw: &types.Raw{
 						Content: []byte("Vincent\n"),
@@ -70,13 +59,14 @@ readline.question('Who are you?', name => {` +
 				},
 			},
 			{
-				Name: "index.js",
-				Path: "./index.js",
+				Name: "global",
+				Path: "./global",
 				Source: types.FileSource{
 					Raw: &types.Raw{
-						Content: []byte(script),
+						Content: []byte("123"),
 					},
 				},
+				Type: types.GlobalFileType,
 			},
 		},
 	}

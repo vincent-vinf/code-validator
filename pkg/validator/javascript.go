@@ -13,19 +13,32 @@ const (
 )
 
 type Validator struct {
-	task       *types.Task
-	controller *pipeline.Controller
+	id int
 }
 
-func (e *Validator) Exec() (*types.Report, error) {
-	if e.task == nil || e.controller == nil {
-		return nil, fmt.Errorf("task and controller cannot be nil")
+func New(id int) *Validator {
+	return &Validator{
+		id: id,
 	}
-	verify, err := e.task.Verify.ToStep()
+}
+
+func (e *Validator) Exec(task *types.Task) (*types.Report, error) {
+	if task == nil {
+		return nil, fmt.Errorf("task cannot be nil")
+	}
+	if task.Runtime != SupportRuntime {
+		return nil, fmt.Errorf("the runtime(%s) is not supported", task.Runtime)
+	}
+
+	controller, err := e.newController()
 	if err != nil {
 		return nil, err
 	}
-	steps := []types.Step{
+	verify, err := task.Verify.ToStep()
+	if err != nil {
+		return nil, err
+	}
+	steps := []*types.Step{
 		{
 			Name: "npm-init",
 			Cmd:  "/usr/local/bin/npm",
@@ -35,39 +48,40 @@ func (e *Validator) Exec() (*types.Report, error) {
 			},
 		},
 	}
-	if e.task.Init != nil {
-		steps = append(steps, *e.task.Init)
+	if task.Init != nil {
+		steps = append(steps, task.Init)
 	}
 	steps = append(steps,
-		types.Step{
+		&types.Step{
 			Name: types.RunStepName,
 			Cmd:  "/usr/local/bin/node",
 			Args: []string{
 				"./index.js",
 			},
 		},
-		*verify,
+		verify,
 	)
-	p := types.Pipeline{
-		Name:  e.task.Name,
+	p := &types.Pipeline{
+		Name:  task.Name,
 		Steps: steps,
 		Files: append(
-			[]types.File{
+			[]*types.File{
 				{
 					Name:   "index.js",
 					Path:   "./index.js",
-					Source: e.task.Run.Source,
+					Source: task.Run.Source,
+					Type:   types.GlobalFileType,
 				},
 			},
-			e.task.Files...,
+			task.Files...,
 		),
 	}
 
-	if err = e.controller.Exec(p); err != nil {
+	if err = controller.Exec(p); err != nil {
 		return nil, fmt.Errorf("exec fail, err: %w", err)
 	}
 
-	file, err := e.controller.ReadFile("./report/result")
+	file, err := controller.ReadFile("./report/result")
 	if err != nil {
 		return nil, err
 	}
@@ -77,21 +91,11 @@ func (e *Validator) Exec() (*types.Report, error) {
 	}, nil
 }
 
-func New(id int, task *types.Task) (*Validator, error) {
-	if task.Runtime != SupportRuntime {
-		return nil, fmt.Errorf("the runtime(%s) is not supported", task.Runtime)
-	}
-	box, err := sandbox.New(id)
-	if err != nil {
-		return nil, err
-	}
-	controller, err := pipeline.NewController(box)
+func (e *Validator) newController() (*pipeline.Controller, error) {
+	box, err := sandbox.New(e.id)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Validator{
-		task:       task,
-		controller: controller,
-	}, nil
+	return pipeline.NewController(box)
 }

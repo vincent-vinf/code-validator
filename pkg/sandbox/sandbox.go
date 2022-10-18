@@ -32,6 +32,7 @@ type Sandbox interface {
 
 	WriteFile(filepath string, data []byte) error
 	ReadFile(filepath string) ([]byte, error)
+	RemoveFile(recursive bool, paths ...string) error
 
 	GetID() int
 }
@@ -58,10 +59,6 @@ type Isolate struct {
 }
 
 func (i *Isolate) Init() error {
-	if err := exec.Command("isolate", "--version").Run(); err != nil {
-		return fmt.Errorf("is isolate installed? err: %w", err)
-	}
-
 	if data, err := exec.Command("isolate", fmt.Sprintf("-b %d", i.id), "--init").Output(); err != nil {
 		return fmt.Errorf("init box(%d) err: %w", i.id, err)
 	} else {
@@ -116,42 +113,81 @@ func (i *Isolate) WriteFile(filepath string, data []byte) error {
 	if err := i.initFile(filepath); err != nil {
 		return err
 	}
+	p, err := i.pathConvert(filepath)
+	if err != nil {
+		return err
+	}
 
-	return os.WriteFile(i.pathConvert(filepath), data, defaultFileMode)
+	return os.WriteFile(p, data, defaultFileMode)
 }
 func (i *Isolate) ReadFile(filepath string) ([]byte, error) {
-	return os.ReadFile(i.pathConvert(filepath))
+	p, err := i.pathConvert(filepath)
+	if err != nil {
+		return nil, err
+	}
+
+	return os.ReadFile(p)
 }
-func (i *Isolate) pathConvert(filepath string) string {
+func (i *Isolate) RemoveFile(recursive bool, paths ...string) error {
+	var cmd string
+	if recursive {
+		cmd = fmt.Sprintf("rm -rf %s", strings.Join(paths, " "))
+	} else {
+		cmd = fmt.Sprintf("rm -fd %s", strings.Join(paths, " "))
+	}
+
+	stdout, stderr, err := i.runSh(cmd)
+	if err != nil {
+		return fmt.Errorf("rm file err, stdout: %s, stderr: %s, %w", stdout, stderr, err)
+	}
+
+	return nil
+}
+
+func (i *Isolate) pathConvert(filepath string) (string, error) {
+	var p string
 	if path.IsAbs(filepath) {
 		s := strings.Split(filepath, "/")
 		switch s[1] {
 		case "tmp":
-			return path.Join(i.workdir, "tmp", filepath)
+			p = path.Join(i.workdir, "tmp", filepath)
 		default:
-			return path.Join(i.workdir, filepath)
+			p = path.Join(i.workdir, filepath)
 		}
+	} else {
+		p = path.Join(i.workdir, "box", filepath)
 	}
 
-	return path.Join(i.workdir, "box", filepath)
+	if !strings.HasPrefix(p, i.workdir) {
+		return "", fmt.Errorf("invalid path")
+	}
+
+	return p, nil
 }
 func (i *Isolate) initFile(filepath string) error {
 	filepath = path.Clean(filepath)
+
+	stdout, stderr, err := i.runSh(fmt.Sprintf("mkdir -p %s && touch %s", path.Dir(filepath), filepath))
+	if err != nil {
+		return fmt.Errorf("init file err, stdout: %s, stderr: %s, %w", stdout, stderr, err)
+	}
+
+	return nil
+}
+func (i *Isolate) runSh(sh string) (stdout, stderr string, err error) {
 	var outBuf, errBuf bytes.Buffer
 
-	err := i.Run("/bin/sh",
-		[]string{"-c", fmt.Sprintf("mkdir -p %s && touch %s", path.Dir(filepath), filepath)},
+	err = i.Run("/bin/sh",
+		[]string{"-c", sh},
 		Env(map[string]string{
 			"PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+			"HOME": "/tmp",
 		}),
 		Stdout(&outBuf),
 		Stderr(&errBuf),
 	)
-	if err != nil {
-		return fmt.Errorf("init file err, stdout: %s, stderr: %s, %w", outBuf.String(), errBuf.String(), err)
-	}
 
-	return nil
+	return outBuf.String(), errBuf.String(), err
 }
 
 type run struct {

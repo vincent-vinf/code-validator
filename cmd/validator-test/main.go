@@ -24,7 +24,7 @@ func main() {
 			},
 		},
 		Runtime: types.JavaScriptRuntime,
-		Files: []types.File{
+		Files: []*types.File{
 			{
 				Name: "expected-output",
 				Path: "./expected-output",
@@ -34,11 +34,7 @@ func main() {
 			},
 		},
 	}
-	v, err := validator.New(1, t)
-	if err != nil {
-		panic(err)
-	}
-	report, err := v.Exec()
+	report, err := validator.New(1).Exec(t)
 	if err != nil {
 		panic(err)
 	}

@@ -16,7 +16,7 @@ type Task struct {
 	Run    Code
 	Verify Validator
 
-	Files []File
+	Files []*File
 
 	Name    string
 	Runtime string
@@ -67,7 +67,11 @@ type DefaultValidator struct {
 }
 
 type Report struct {
-	Status   string
-	Result   string
-	Messages []string
+	Result string
+	Cases  []Case
+}
+
+type Case struct {
+	Result string
+	Time   string
 }
