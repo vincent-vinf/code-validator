@@ -19,8 +19,9 @@ func main() {
 			},
 		},
 		Verify: types.Validator{
-			Default: &types.DefaultValidator{
-				Name: types.ExactMatchValidator,
+			ExactMatch: &types.ExactMatchValidator{
+				File1: "./expected-output",
+				File2: "",
 			},
 		},
 		Runtime: types.JavaScriptRuntime,

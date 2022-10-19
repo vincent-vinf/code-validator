@@ -17,11 +17,7 @@ func init() {
 }
 
 func main() {
-	box, err := sandbox.NewIsolate(rand.Int() % sandbox.MaxID)
-	if err != nil {
-		panic(err)
-	}
-	e, err := pipeline.NewController(box)
+	e, err := pipeline.NewController(rand.Int() % sandbox.MaxID)
 	if err != nil {
 		panic(err)
 	}
@@ -35,7 +31,7 @@ func main() {
 				Args: []string{
 					"./",
 				},
-				MountFiles: []string{
+				RefFiles: []string{
 					"default",
 				},
 			},
@@ -45,7 +41,7 @@ func main() {
 				Args: []string{
 					"./",
 				},
-				MountFiles: []string{},
+				RefFiles: []string{},
 			},
 		},
 		Files: []*types.File{

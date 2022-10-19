@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/vincent-vinf/code-validator/pkg/pipeline"
-	"github.com/vincent-vinf/code-validator/pkg/sandbox"
 	"github.com/vincent-vinf/code-validator/pkg/types"
 )
 
@@ -30,13 +29,17 @@ func (e *Validator) Exec(task *types.Task) (*types.Report, error) {
 		return nil, fmt.Errorf("the runtime(%s) is not supported", task.Runtime)
 	}
 
-	controller, err := e.newController()
+	controller, err := pipeline.NewController(e.id)
 	if err != nil {
 		return nil, err
 	}
 	verify, err := task.Verify.ToStep()
 	if err != nil {
 		return nil, err
+	}
+	verify.RefFiles = []string{
+		"run-out",
+		"expected-output",
 	}
 	steps := []*types.Step{
 		{
@@ -72,6 +75,13 @@ func (e *Validator) Exec(task *types.Task) (*types.Report, error) {
 					Source: task.Run.Source,
 					Type:   types.GlobalFileType,
 				},
+				{
+					Name: "run-out",
+					Path: fmt.Sprintf("./%s.out", types.RunStepName),
+					Source: types.FileSource{
+						Host: &types.Host{Path: controller.GetStepLogPath(types.RunStepName)},
+					},
+				},
 			},
 			task.Files...,
 		),
@@ -89,13 +99,4 @@ func (e *Validator) Exec(task *types.Task) (*types.Report, error) {
 	return &types.Report{
 		Result: string(file),
 	}, nil
-}
-
-func (e *Validator) newController() (*pipeline.Controller, error) {
-	box, err := sandbox.New(e.id)
-	if err != nil {
-		return nil, err
-	}
-
-	return pipeline.NewController(box)
 }

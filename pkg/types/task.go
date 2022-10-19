@@ -3,8 +3,6 @@ package types
 import "fmt"
 
 const (
-	ExactMatchValidator = "exact-match"
-
 	InitStepName   = "init"
 	RunStepName    = "run"
 	VerifyStepName = "verify"
@@ -27,23 +25,22 @@ type Code struct {
 }
 
 type Validator struct {
-	Custom  *Step
-	Default *DefaultValidator
+	Custom     *Step
+	ExactMatch *ExactMatchValidator
 }
 
 func (v Validator) ToStep() (*Step, error) {
-	if v.Custom != nil {
+	switch {
+	case v.Custom != nil:
 		return nil, fmt.Errorf("not implemented")
-	} else if v.Default != nil {
-		switch v.Default.Name {
-		case ExactMatchValidator:
-			return &Step{
-				Name: VerifyStepName,
-				Cmd:  "/bin/sh",
-				Args: []string{
-					"-c",
-					fmt.Sprintf(
-						`
+	case v.ExactMatch != nil:
+		return &Step{
+			Name: VerifyStepName,
+			Cmd:  "/bin/sh",
+			Args: []string{
+				"-c",
+				fmt.Sprintf(
+					`
 code-validator match %s %s; ec=$?
 mkdir -p ./report;
 case $ec in
@@ -51,19 +48,17 @@ case $ec in
     1) exit 1;;
     *) echo fail > ./report/result;;
 esac
-`, "./std-run/stdout", "./expected-output"),
-				},
-			}, nil
-		default:
-			return nil, fmt.Errorf("unknown validator(%s)", v.Default.Name)
-		}
-	} else {
+`, v.ExactMatch.File1, v.ExactMatch.File2),
+			},
+		}, nil
+	default:
 		return nil, fmt.Errorf("no validator specified")
 	}
 }
 
-type DefaultValidator struct {
-	Name string
+type ExactMatchValidator struct {
+	File1 string
+	File2 string
 }
 
 type Report struct {

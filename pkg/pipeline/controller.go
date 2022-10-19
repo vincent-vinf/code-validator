@@ -4,6 +4,9 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"os"
+	"path"
+	"strconv"
 
 	"github.com/vincent-vinf/code-validator/pkg/sandbox"
 	"github.com/vincent-vinf/code-validator/pkg/types"
@@ -15,16 +18,23 @@ var (
 )
 
 type Controller struct {
-	box sandbox.Sandbox
+	box     sandbox.Sandbox
+	tempDir string
 }
 
-func NewController(box sandbox.Sandbox) (*Controller, error) {
-	if box == nil {
-		return nil, fmt.Errorf("sandbox must be specified")
+func NewController(id int) (*Controller, error) {
+	box, err := sandbox.New(id)
+	if err != nil {
+		return nil, err
+	}
+	p := path.Join(types.DefaultTempDir, strconv.Itoa(id))
+	if err = os.MkdirAll(p, 755); err != nil {
+		return nil, err
 	}
 
 	return &Controller{
-		box: box,
+		box:     box,
+		tempDir: p,
 	}, nil
 }
 
@@ -41,12 +51,12 @@ func (e *Controller) Exec(pipeline *types.Pipeline) error {
 		return err
 	}
 
-	// mount global files
+	// copy global files
 	for i := range pipeline.Files {
 		if pipeline.Files[i] == nil || pipeline.Files[i].Type != types.GlobalFileType {
 			continue
 		}
-		if err := e.mountFile(pipeline.Files[i]); err != nil {
+		if err := e.copyFile(pipeline.Files[i]); err != nil {
 			return err
 		}
 	}
@@ -59,10 +69,10 @@ func (e *Controller) Exec(pipeline *types.Pipeline) error {
 		}
 		logger.Infof("====step: %s====", step.Name)
 
-		// mount file
-		files := mountInStepFiles(append(step.MountFiles, step.StdinFile), pipeline.Files)
+		// copy file
+		files := filesToBeCopied(append(step.RefFiles, step.StdinFile), pipeline.Files)
 		for i := range files {
-			if err := e.mountFile(files[i]); err != nil {
+			if err := e.copyFile(files[i]); err != nil {
 				return err
 			}
 		}
@@ -89,7 +99,7 @@ func (e *Controller) Exec(pipeline *types.Pipeline) error {
 		)
 
 		// write logs
-		if err := e.box.WriteFile(fmt.Sprintf("./%s.logs", step.Name), combinedOutBuf.Bytes()); err != nil {
+		if err := e.writeLogFile(step.Name, combinedOutBuf.Bytes()); err != nil {
 			logger.Error(err)
 		}
 		// remove files
@@ -122,11 +132,18 @@ func (e *Controller) Clean() error {
 	if err := e.box.Clean(); err != nil {
 		return fmt.Errorf("clean sandbox err: %s", err)
 	}
+	err := os.RemoveAll(e.tempDir)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
+func (e *Controller) GetStepLogPath(StepName string) string {
+	return path.Join(e.tempDir, StepName, types.StepLogFile)
+}
 
-func (e *Controller) mountFile(file *types.File) error {
+func (e *Controller) copyFile(file *types.File) error {
 	if file == nil {
 		return nil
 	}
@@ -137,11 +154,18 @@ func (e *Controller) mountFile(file *types.File) error {
 
 	return e.box.WriteFile(file.Path, data)
 }
+func (e *Controller) writeLogFile(stepName string, data []byte) error {
+	err := os.MkdirAll(path.Join(e.tempDir, stepName), 755)
+	if err != nil {
+		return err
+	}
 
-func mountInStepFiles(fileNames []string, files []*types.File) (res []*types.File) {
-	mountedFilesSet := make(map[string]struct{}, len(fileNames))
+	return os.WriteFile(e.GetStepLogPath(stepName), data, 644)
+}
+func filesToBeCopied(fileNames []string, files []*types.File) (res []*types.File) {
+	set := make(map[string]struct{}, len(fileNames))
 	for i := range fileNames {
-		mountedFilesSet[fileNames[i]] = struct{}{}
+		set[fileNames[i]] = struct{}{}
 	}
 	for i := range files {
 		if files[i] == nil {
@@ -150,7 +174,7 @@ func mountInStepFiles(fileNames []string, files []*types.File) (res []*types.Fil
 		switch files[i].Type {
 		case types.GlobalFileType:
 		default:
-			if _, ok := mountedFilesSet[files[i].Name]; ok {
+			if _, ok := set[files[i].Name]; ok {
 				res = append(res, files[i])
 			}
 		}

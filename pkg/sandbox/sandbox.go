@@ -91,7 +91,7 @@ func (i *Isolate) Run(cmd string, args []string, opts ...Option) error {
 	gArgs := r.getArgs()
 	gArgs = append(gArgs, fmt.Sprintf("-b %d", i.id), "-s", "--dir=/etc=/etc:noexec", "--run", "--", cmd)
 	gArgs = append(gArgs, args...)
-	logger.Debug(gArgs)
+	logger.Debug(cmd, " ", strings.Join(args, " "))
 
 	c := exec.Command("isolate", gArgs...)
 	c.Stdin = r.stdin
@@ -99,7 +99,7 @@ func (i *Isolate) Run(cmd string, args []string, opts ...Option) error {
 	c.Stderr = r.stderr
 
 	if err := c.Run(); err != nil {
-		return fmt.Errorf("run cmd(%s) in box(%d) err: %w", cmd, i.id, err)
+		return fmt.Errorf("run cmd(%s) args(%s) in box(%d) err: %w", cmd, strings.Join(args, ","), i.id, err)
 	}
 
 	return nil
@@ -129,6 +129,9 @@ func (i *Isolate) ReadFile(filepath string) ([]byte, error) {
 	return os.ReadFile(p)
 }
 func (i *Isolate) RemoveFile(recursive bool, paths ...string) error {
+	if len(paths) == 0 {
+		return nil
+	}
 	var cmd string
 	if recursive {
 		cmd = fmt.Sprintf("rm -rf %s", strings.Join(paths, " "))
