@@ -8,7 +8,6 @@ import (
 	"github.com/vincent-vinf/code-validator/pkg/pipeline"
 
 	"github.com/vincent-vinf/code-validator/pkg/sandbox"
-	"github.com/vincent-vinf/code-validator/pkg/types"
 )
 
 func init() {
@@ -22,9 +21,9 @@ func main() {
 		panic(err)
 	}
 
-	t := &types.Pipeline{
+	t := &pipeline.Pipeline{
 		Name: "test-task",
-		Steps: []*types.Step{
+		Steps: []*pipeline.Step{
 			{
 				Name: "init",
 				Cmd:  "/bin/ls",
@@ -44,12 +43,12 @@ func main() {
 				RefFiles: []string{},
 			},
 		},
-		Files: []*types.File{
+		Files: []*pipeline.File{
 			{
 				Name: "default",
 				Path: "./default",
-				Source: types.FileSource{
-					Raw: &types.Raw{
+				Source: pipeline.FileSource{
+					Raw: &pipeline.Raw{
 						Content: []byte("Vincent\n"),
 					},
 				},
@@ -57,12 +56,12 @@ func main() {
 			{
 				Name: "global",
 				Path: "./global",
-				Source: types.FileSource{
-					Raw: &types.Raw{
+				Source: pipeline.FileSource{
+					Raw: &pipeline.Raw{
 						Content: []byte("123"),
 					},
 				},
-				Type: types.GlobalFileType,
+				Type: pipeline.GlobalFileType,
 			},
 		},
 	}

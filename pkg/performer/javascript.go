@@ -1,4 +1,4 @@
-package validator
+package performer
 
 import (
 	"fmt"
@@ -11,17 +11,17 @@ const (
 	SupportRuntime = types.JavaScriptRuntime
 )
 
-type Validator struct {
+type Performer struct {
 	id int
 }
 
-func New(id int) *Validator {
-	return &Validator{
+func New(id int) *Performer {
+	return &Performer{
 		id: id,
 	}
 }
 
-func (e *Validator) Exec(task *types.Task) (*types.Report, error) {
+func (p *Performer) Run(task *Task) (*Report, error) {
 	if task == nil {
 		return nil, fmt.Errorf("task cannot be nil")
 	}
@@ -29,7 +29,7 @@ func (e *Validator) Exec(task *types.Task) (*types.Report, error) {
 		return nil, fmt.Errorf("the runtime(%s) is not supported", task.Runtime)
 	}
 
-	controller, err := pipeline.NewController(e.id)
+	controller, err := pipeline.NewController(p.id)
 	if err != nil {
 		return nil, err
 	}
@@ -41,7 +41,7 @@ func (e *Validator) Exec(task *types.Task) (*types.Report, error) {
 		"run-out",
 		"expected-output",
 	}
-	steps := []*types.Step{
+	steps := []*pipeline.Step{
 		{
 			Name: "npm-init",
 			Cmd:  "/usr/local/bin/npm",
@@ -55,8 +55,8 @@ func (e *Validator) Exec(task *types.Task) (*types.Report, error) {
 		steps = append(steps, task.Init)
 	}
 	steps = append(steps,
-		&types.Step{
-			Name: types.RunStepName,
+		&pipeline.Step{
+			Name: RunStepName,
 			Cmd:  "/usr/local/bin/node",
 			Args: []string{
 				"./index.js",
@@ -64,30 +64,29 @@ func (e *Validator) Exec(task *types.Task) (*types.Report, error) {
 		},
 		verify,
 	)
-	p := &types.Pipeline{
+	pl := &pipeline.Pipeline{
 		Name:  task.Name,
 		Steps: steps,
 		Files: append(
-			[]*types.File{
+			[]*pipeline.File{
 				{
 					Name:   "index.js",
 					Path:   "./index.js",
 					Source: task.Run.Source,
-					Type:   types.GlobalFileType,
+					Type:   pipeline.GlobalFileType,
 				},
 				{
 					Name: "run-out",
-					Path: fmt.Sprintf("./%s.out", types.RunStepName),
-					Source: types.FileSource{
-						Host: &types.Host{Path: controller.GetStepLogPath(types.RunStepName)},
+					Path: fmt.Sprintf("./%s.out", RunStepName),
+					Source: pipeline.FileSource{
+						Host: &pipeline.Host{Path: controller.GetStepLogPath(RunStepName)},
 					},
 				},
 			},
-			task.Files...,
 		),
 	}
 
-	if err = controller.Exec(p); err != nil {
+	if err = controller.Exec(pl); err != nil {
 		return nil, fmt.Errorf("exec fail, err: %w", err)
 	}
 
@@ -96,7 +95,7 @@ func (e *Validator) Exec(task *types.Task) (*types.Report, error) {
 		return nil, err
 	}
 
-	return &types.Report{
+	return &Report{
 		Result: string(file),
 	}, nil
 }

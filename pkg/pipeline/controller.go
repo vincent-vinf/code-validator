@@ -9,7 +9,6 @@ import (
 	"strconv"
 
 	"github.com/vincent-vinf/code-validator/pkg/sandbox"
-	"github.com/vincent-vinf/code-validator/pkg/types"
 	"github.com/vincent-vinf/code-validator/pkg/util/log"
 )
 
@@ -27,7 +26,7 @@ func NewController(id int) (*Controller, error) {
 	if err != nil {
 		return nil, err
 	}
-	p := path.Join(types.DefaultTempDir, strconv.Itoa(id))
+	p := path.Join(DefaultTempDir, strconv.Itoa(id))
 	if err = os.MkdirAll(p, 755); err != nil {
 		return nil, err
 	}
@@ -42,7 +41,7 @@ func (e *Controller) ReadFile(filepath string) ([]byte, error) {
 	return e.box.ReadFile(filepath)
 }
 
-func (e *Controller) Exec(pipeline *types.Pipeline) error {
+func (e *Controller) Exec(pipeline *Pipeline) error {
 	if pipeline == nil {
 		return fmt.Errorf("pipeline cannot be empty")
 	}
@@ -53,7 +52,7 @@ func (e *Controller) Exec(pipeline *types.Pipeline) error {
 
 	// copy global files
 	for i := range pipeline.Files {
-		if pipeline.Files[i] == nil || pipeline.Files[i].Type != types.GlobalFileType {
+		if pipeline.Files[i] == nil || pipeline.Files[i].Type != GlobalFileType {
 			continue
 		}
 		if err := e.copyFile(pipeline.Files[i]); err != nil {
@@ -120,6 +119,7 @@ func (e *Controller) Exec(pipeline *types.Pipeline) error {
 	return nil
 }
 func (e *Controller) Logs(steps ...string) []byte {
+	// todo
 	if len(steps) == 0 {
 		// get all
 	} else {
@@ -140,10 +140,10 @@ func (e *Controller) Clean() error {
 	return nil
 }
 func (e *Controller) GetStepLogPath(StepName string) string {
-	return path.Join(e.tempDir, StepName, types.StepLogFile)
+	return path.Join(e.tempDir, StepName, StepLogFile)
 }
 
-func (e *Controller) copyFile(file *types.File) error {
+func (e *Controller) copyFile(file *File) error {
 	if file == nil {
 		return nil
 	}
@@ -162,7 +162,7 @@ func (e *Controller) writeLogFile(stepName string, data []byte) error {
 
 	return os.WriteFile(e.GetStepLogPath(stepName), data, 644)
 }
-func filesToBeCopied(fileNames []string, files []*types.File) (res []*types.File) {
+func filesToBeCopied(fileNames []string, files []*File) (res []*File) {
 	set := make(map[string]struct{}, len(fileNames))
 	for i := range fileNames {
 		set[fileNames[i]] = struct{}{}
@@ -172,7 +172,7 @@ func filesToBeCopied(fileNames []string, files []*types.File) (res []*types.File
 			continue
 		}
 		switch files[i].Type {
-		case types.GlobalFileType:
+		case GlobalFileType:
 		default:
 			if _, ok := set[files[i].Name]; ok {
 				res = append(res, files[i])

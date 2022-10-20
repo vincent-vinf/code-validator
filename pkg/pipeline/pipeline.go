@@ -1,4 +1,4 @@
-package types
+package pipeline
 
 import (
 	"fmt"
@@ -58,7 +58,7 @@ func (f *File) Read() ([]byte, error) {
 
 		return os.ReadFile(p)
 	default:
-		return nil, fmt.Errorf("unknown file(%s) source", f.Name)
+		return nil, fmt.Errorf("file(%s) source not specified", f.Name)
 	}
 }
 

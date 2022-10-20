@@ -1,6 +1,10 @@
-package types
+package performer
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/vincent-vinf/code-validator/pkg/pipeline"
+)
 
 const (
 	InitStepName   = "init"
@@ -9,32 +13,37 @@ const (
 )
 
 type Task struct {
-	// step
-	Init   *Step
+	Init   *pipeline.Step
 	Run    Code
 	Verify Validator
 
-	Files []*File
+	Cases []TestCase
 
 	Name    string
 	Runtime string
 }
 
 type Code struct {
-	Source FileSource
+	Source pipeline.FileSource
 }
 
 type Validator struct {
-	Custom     *Step
+	Custom     *pipeline.Step
 	ExactMatch *ExactMatchValidator
 }
 
-func (v Validator) ToStep() (*Step, error) {
+type TestCase struct {
+	Name   string
+	Input  *pipeline.File
+	Output *pipeline.File
+}
+
+func (v Validator) ToStep() (*pipeline.Step, error) {
 	switch {
 	case v.Custom != nil:
 		return nil, fmt.Errorf("not implemented")
 	case v.ExactMatch != nil:
-		return &Step{
+		return &pipeline.Step{
 			Name: VerifyStepName,
 			Cmd:  "/bin/sh",
 			Args: []string{
@@ -63,10 +72,10 @@ type ExactMatchValidator struct {
 
 type Report struct {
 	Result string
-	Cases  []Case
+	Cases  []CaseResult
 }
 
-type Case struct {
+type CaseResult struct {
 	Result string
 	Time   string
 }

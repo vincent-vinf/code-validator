@@ -1,9 +1,10 @@
 package main
 
 import (
+	"github.com/vincent-vinf/code-validator/pkg/performer"
+	"github.com/vincent-vinf/code-validator/pkg/pipeline"
 	"github.com/vincent-vinf/code-validator/pkg/types"
 	"github.com/vincent-vinf/code-validator/pkg/util/log"
-	"github.com/vincent-vinf/code-validator/pkg/validator"
 )
 
 var (
@@ -11,31 +12,35 @@ var (
 )
 
 func main() {
-	t := &types.Task{
+	t := &performer.Task{
 		Init: nil,
-		Run: types.Code{
-			Source: types.FileSource{
-				Raw: &types.Raw{Content: []byte("console.log('Hello World');\n")},
+		Run: performer.Code{
+			Source: pipeline.FileSource{
+				Raw: &pipeline.Raw{Content: []byte("console.log('Hello World');\n")},
 			},
 		},
-		Verify: types.Validator{
-			ExactMatch: &types.ExactMatchValidator{
+		Verify: performer.Validator{
+			ExactMatch: &performer.ExactMatchValidator{
 				File1: "./expected-output",
 				File2: "",
 			},
 		},
 		Runtime: types.JavaScriptRuntime,
-		Files: []*types.File{
+		Cases: []performer.TestCase{
 			{
-				Name: "expected-output",
-				Path: "./expected-output",
-				Source: types.FileSource{
-					Raw: &types.Raw{Content: []byte("Hello World")},
+				Name:  "hello",
+				Input: nil,
+				Output: &pipeline.File{
+					Name: "expected-output",
+					Path: "./expected-output",
+					Source: pipeline.FileSource{
+						Raw: &pipeline.Raw{Content: []byte("Hello World")},
+					},
 				},
 			},
 		},
 	}
-	report, err := validator.New(1).Exec(t)
+	report, err := performer.New(1).Run(t)
 	if err != nil {
 		panic(err)
 	}

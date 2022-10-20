@@ -30,6 +30,7 @@ type Sandbox interface {
 	Run(cmd string, args []string, opts ...Option) error
 	Clean() error
 
+	// todo 修改为更安全的实现
 	WriteFile(filepath string, data []byte) error
 	ReadFile(filepath string) ([]byte, error)
 	RemoveFile(recursive bool, paths ...string) error
