@@ -21,9 +21,6 @@ push:
 tar_chart:
 	tar -zcvf spike-chart-$(TAG).tar.gz -C ./helm .
 
-echo:
-	echo $(TAG)
-
 dependencies_install:
 	helm repo add bitnami https://charts.bitnami.com/bitnami
 	helm install cv-minio bitnami/minio -n $(NAMESPACE) --create-namespace

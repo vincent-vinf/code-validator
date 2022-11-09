@@ -4,38 +4,28 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/fs"
-	"os"
 	"os/exec"
 	"path"
 	"strings"
 	"time"
-
-	"github.com/vincent-vinf/code-validator/pkg/util/log"
 )
 
 const (
 	MaxID = 999
 
-	defaultFileSize             = 1024 * 1204 // 1GB
-	defaultFileMode fs.FileMode = 0660
-)
-
-var (
-	logger = log.GetLogger()
+	defaultFileSize = 1024 * 1204 // 1GB
 )
 
 type Sandbox interface {
+	GetID() int
+
 	Init() error
 	Run(cmd string, args []string, opts ...Option) error
 	Clean() error
 
-	// todo 修改为更安全的实现
 	WriteFile(filepath string, data []byte) error
 	ReadFile(filepath string) ([]byte, error)
 	RemoveFile(recursive bool, paths ...string) error
-
-	GetID() int
 }
 
 func New(id int) (Sandbox, error) {
@@ -65,7 +55,7 @@ func (i *Isolate) Init() error {
 	} else {
 		i.workdir = strings.TrimSpace(string(data))
 	}
-	logger.Debug("workdir: ", i.workdir)
+	fmt.Println("workdir: ", i.workdir)
 
 	return nil
 }
@@ -92,7 +82,7 @@ func (i *Isolate) Run(cmd string, args []string, opts ...Option) error {
 	gArgs := r.getArgs()
 	gArgs = append(gArgs, fmt.Sprintf("-b %d", i.id), "-s", "--dir=/etc=/etc:noexec", "--run", "--", cmd)
 	gArgs = append(gArgs, args...)
-	logger.Debug(cmd, " ", strings.Join(args, " "))
+	fmt.Println(cmd, " ", strings.Join(args, " "))
 
 	c := exec.Command("isolate", gArgs...)
 	c.Stdin = r.stdin
@@ -111,23 +101,32 @@ func (i *Isolate) GetID() int {
 }
 
 func (i *Isolate) WriteFile(filepath string, data []byte) error {
-	if err := i.initFile(filepath); err != nil {
-		return err
-	}
-	p, err := i.pathConvert(filepath)
+	filepath = path.Clean(filepath)
+	stdout, stderr, err := i.runSh(fmt.Sprintf("mkdir -p %s && cat - > %s", path.Dir(filepath), filepath), bytes.NewReader(data))
+
 	if err != nil {
-		return err
+		return fmt.Errorf("write file err: %w, stdout: %s, stderr: %s", err, stdout, stderr)
 	}
 
-	return os.WriteFile(p, data, defaultFileMode)
+	return nil
 }
 func (i *Isolate) ReadFile(filepath string) ([]byte, error) {
-	p, err := i.pathConvert(filepath)
+	var outBuf, errBuf bytes.Buffer
+
+	err := i.Run("/bin/sh",
+		[]string{"-c", fmt.Sprintf("cat %s", filepath)},
+		Env(map[string]string{
+			"PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+		}),
+		Stdout(&outBuf),
+		Stderr(&errBuf),
+	)
+
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("read file err: %w, stdout: %s, stderr: %s", err, outBuf.String(), errBuf.String())
 	}
 
-	return os.ReadFile(p)
+	return outBuf.Bytes(), nil
 }
 func (i *Isolate) RemoveFile(recursive bool, paths ...string) error {
 	if len(paths) == 0 {
@@ -140,7 +139,7 @@ func (i *Isolate) RemoveFile(recursive bool, paths ...string) error {
 		cmd = fmt.Sprintf("rm -fd %s", strings.Join(paths, " "))
 	}
 
-	stdout, stderr, err := i.runSh(cmd)
+	stdout, stderr, err := i.runSh(cmd, nil)
 	if err != nil {
 		return fmt.Errorf("rm file err, stdout: %s, stderr: %s, %w", stdout, stderr, err)
 	}
@@ -148,37 +147,7 @@ func (i *Isolate) RemoveFile(recursive bool, paths ...string) error {
 	return nil
 }
 
-func (i *Isolate) pathConvert(filepath string) (string, error) {
-	var p string
-	if path.IsAbs(filepath) {
-		s := strings.Split(filepath, "/")
-		switch s[1] {
-		case "tmp":
-			p = path.Join(i.workdir, "tmp", filepath)
-		default:
-			p = path.Join(i.workdir, filepath)
-		}
-	} else {
-		p = path.Join(i.workdir, "box", filepath)
-	}
-
-	if !strings.HasPrefix(p, i.workdir) {
-		return "", fmt.Errorf("invalid path")
-	}
-
-	return p, nil
-}
-func (i *Isolate) initFile(filepath string) error {
-	filepath = path.Clean(filepath)
-
-	stdout, stderr, err := i.runSh(fmt.Sprintf("mkdir -p %s && touch %s", path.Dir(filepath), filepath))
-	if err != nil {
-		return fmt.Errorf("init file err, stdout: %s, stderr: %s, %w", stdout, stderr, err)
-	}
-
-	return nil
-}
-func (i *Isolate) runSh(sh string) (stdout, stderr string, err error) {
+func (i *Isolate) runSh(sh string, stdin io.Reader) (stdout, stderr string, err error) {
 	var outBuf, errBuf bytes.Buffer
 
 	err = i.Run("/bin/sh",
@@ -189,9 +158,14 @@ func (i *Isolate) runSh(sh string) (stdout, stderr string, err error) {
 		}),
 		Stdout(&outBuf),
 		Stderr(&errBuf),
+		Stdin(stdin),
 	)
 
 	return outBuf.String(), errBuf.String(), err
+}
+
+func (i *Isolate) Workdir() string {
+	return i.workdir
 }
 
 type run struct {
@@ -248,9 +222,9 @@ func (r *run) getArgs() (args []string) {
 
 type Option func(*run)
 
-func Metadata(file string) Option {
+func Metadata(hostPath string) Option {
 	return func(r *run) {
-		r.metadata = file
+		r.metadata = hostPath
 	}
 }
 func Network(b bool) Option {
@@ -288,7 +262,6 @@ func FileSize(kb int) Option {
 	return func(r *run) {
 		r.fileSize = kb
 	}
-
 }
 func Env(kv map[string]string) Option {
 	return func(r *run) {
@@ -309,4 +282,7 @@ func Stderr(e io.Writer) Option {
 	return func(r *run) {
 		r.stderr = e
 	}
+}
+
+type Mete struct {
 }

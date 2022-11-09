@@ -27,15 +27,18 @@ func main() {
 	}
 
 	var out, eBuf bytes.Buffer
+	in := make([]byte, 1024*1024*1024)
 
-	err = s.Run("/bin/sh", []string{"-c", "npm install -g ping"},
+	err = s.Run("/bin/sh", []string{"-c", "cat - > ./t"},
 		sandbox.Network(true),
+		sandbox.Stdin(bytes.NewReader(in)),
 		sandbox.Stdout(&out),
 		sandbox.Stderr(&eBuf),
 		sandbox.Env(map[string]string{
 			"HOME": "/tmp",
 			"PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
 		}),
+		sandbox.Metadata("./meta"),
 	)
 	log.Println("out:", out.String())
 	log.Println("err:", eBuf.String())
