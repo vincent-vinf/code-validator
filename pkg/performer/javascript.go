@@ -67,23 +67,21 @@ func (p *Performer) Run(task *Task) (*Report, error) {
 	pl := &pipeline.Pipeline{
 		Name:  task.Name,
 		Steps: steps,
-		Files: append(
-			[]*pipeline.File{
-				{
-					Name:   "index.js",
-					Path:   "./index.js",
-					Source: task.Run.Source,
-					Type:   pipeline.GlobalFileType,
-				},
-				{
-					Name: "run-out",
-					Path: fmt.Sprintf("./%s.out", RunStepName),
-					Source: pipeline.FileSource{
-						Host: &pipeline.Host{Path: controller.GetStepLogPath(RunStepName)},
-					},
+		Files: []*pipeline.File{
+			{
+				Name:   "index.js",
+				Path:   "./index.js",
+				Source: task.Run.Source,
+				Type:   pipeline.GlobalFileType,
+			},
+			{
+				Name: "run-out",
+				Path: fmt.Sprintf("./%s.out", RunStepName),
+				Source: pipeline.FileSource{
+					Host: &pipeline.Host{Path: controller.GetStepLogPath(RunStepName)},
 				},
 			},
-		),
+		},
 	}
 
 	if err = controller.Exec(pl); err != nil {

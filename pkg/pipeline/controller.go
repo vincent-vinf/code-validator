@@ -27,7 +27,7 @@ func NewController(id int) (*Controller, error) {
 		return nil, err
 	}
 	p := path.Join(DefaultTempDir, strconv.Itoa(id))
-	if err = os.MkdirAll(p, 755); err != nil {
+	if err = os.MkdirAll(p, 0755); err != nil {
 		return nil, err
 	}
 
@@ -155,12 +155,12 @@ func (e *Controller) copyFile(file *File) error {
 	return e.box.WriteFile(file.Path, data)
 }
 func (e *Controller) writeLogFile(stepName string, data []byte) error {
-	err := os.MkdirAll(path.Join(e.tempDir, stepName), 755)
+	err := os.MkdirAll(path.Join(e.tempDir, stepName), 0755)
 	if err != nil {
 		return err
 	}
 
-	return os.WriteFile(e.GetStepLogPath(stepName), data, 644)
+	return os.WriteFile(e.GetStepLogPath(stepName), data, 0644)
 }
 func filesToBeCopied(fileNames []string, files []*File) (res []*File) {
 	set := make(map[string]struct{}, len(fileNames))
