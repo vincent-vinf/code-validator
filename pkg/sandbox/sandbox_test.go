@@ -1,8 +1,6 @@
 package sandbox
 
 import (
-	"log"
-	"path"
 	"testing"
 )
 
@@ -10,5 +8,9 @@ func init() {
 }
 
 func TestIsolate(t *testing.T) {
-	log.Println(path.Join("box", "./a"))
+	m := &Meta{}
+	err := m.ReadFile("/Users/vincent/Documents/repo/code-validator/meta")
+	if err != nil {
+		t.Fatal(err)
+	}
 }
