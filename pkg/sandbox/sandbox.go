@@ -79,7 +79,7 @@ func (i *Isolate) Run(cmd string, args []string, opts ...Option) error {
 	for _, opt := range opts {
 		opt(r)
 	}
-	gArgs := r.getArgs()
+	gArgs := r.getArgs(i.workdir)
 	gArgs = append(gArgs, fmt.Sprintf("-b %d", i.id), "-s", "--dir=/etc=/etc:noexec", "--run", "--", cmd)
 	gArgs = append(gArgs, args...)
 	fmt.Println(cmd, " ", strings.Join(args, " "))
@@ -88,8 +88,12 @@ func (i *Isolate) Run(cmd string, args []string, opts ...Option) error {
 	c.Stdin = r.stdin
 	c.Stdout = r.stdout
 	c.Stderr = r.stderr
+	err := c.Run()
 
-	if err := c.Run(); err != nil {
+	if r.meta != nil {
+		_ = r.meta.ReadFile(path.Join(i.workdir, "meta"))
+	}
+	if err != nil {
 		return fmt.Errorf("run cmd(%s) args(%s) in box(%d) err: %w", cmd, strings.Join(args, ","), i.id, err)
 	}
 
@@ -169,7 +173,7 @@ func (i *Isolate) Workdir() string {
 }
 
 type run struct {
-	metadata string
+	meta *Meta
 	// --share-net
 	enableNetwork bool
 
@@ -187,9 +191,9 @@ type run struct {
 	stderr io.Writer
 }
 
-func (r *run) getArgs() (args []string) {
-	if r.metadata != "" {
-		args = append(args, "--meta="+r.metadata)
+func (r *run) getArgs(workdir string) (args []string) {
+	if r.meta != nil {
+		args = append(args, fmt.Sprintf("--meta=%s", path.Join(workdir, "meta")))
 	}
 	if r.enableNetwork {
 		args = append(args, "--share-net")
@@ -222,9 +226,9 @@ func (r *run) getArgs() (args []string) {
 
 type Option func(*run)
 
-func Metadata(hostPath string) Option {
+func Metadata(meta *Meta) Option {
 	return func(r *run) {
-		r.metadata = hostPath
+		r.meta = meta
 	}
 }
 func Network(b bool) Option {
@@ -282,7 +286,4 @@ func Stderr(e io.Writer) Option {
 	return func(r *run) {
 		r.stderr = e
 	}
-}
-
-type Mete struct {
 }

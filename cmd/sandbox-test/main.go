@@ -27,21 +27,21 @@ func main() {
 	}
 
 	var out, eBuf bytes.Buffer
-	in := make([]byte, 1024*1024*1024)
-
-	err = s.Run("/bin/sh", []string{"-c", "cat - > ./t"},
+	m := &sandbox.Meta{}
+	err = s.Run("/bin/sh", []string{"-c", "echo 123"},
 		sandbox.Network(true),
-		sandbox.Stdin(bytes.NewReader(in)),
+		//sandbox.Stdin(bytes.NewReader(in)),
 		sandbox.Stdout(&out),
 		sandbox.Stderr(&eBuf),
 		sandbox.Env(map[string]string{
 			"HOME": "/tmp",
 			"PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
 		}),
-		sandbox.Metadata("./meta"),
+		sandbox.Metadata(m),
 	)
 	log.Println("out:", out.String())
 	log.Println("err:", eBuf.String())
+	log.Printf("%+v", m)
 	if err != nil {
 		panic(err)
 	}

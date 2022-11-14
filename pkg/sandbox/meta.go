@@ -14,8 +14,8 @@ type Meta struct {
 	CSWVoluntary int
 	Exitcode     int
 	MaxRSS       int
-	Time         int
-	TimeWall     int
+	Time         float64
+	TimeWall     float64
 
 	ExitSig int
 	Killed  bool
@@ -59,16 +59,32 @@ func (m *Meta) ReadFile(path string) error {
 		case "csw-forced":
 			m.CSWForced = atoi(v)
 		case "csw-voluntary":
+			m.CSWVoluntary = atoi(v)
 		case "exitcode":
+			m.Exitcode = atoi(v)
 		case "max-rss":
+			m.MaxRSS = atoi(v)
 		case "time":
+			float, err := strconv.ParseFloat(v, 64)
+			if err != nil {
+				m.Time = -1
+			}
+			m.Time = float
 		case "time-wall":
-
+			float, err := strconv.ParseFloat(v, 64)
+			if err != nil {
+				m.TimeWall = -1
+			}
+			m.TimeWall = float
 		case "exitsig":
+			m.ExitSig = atoi(v)
 		case "killed":
+			n := atoi(v)
+			m.Killed = n == 1
 		case "message":
+			m.Message = v
 		case "status":
-
+			m.Status = v
 		}
 	}
 
