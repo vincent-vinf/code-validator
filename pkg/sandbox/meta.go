@@ -9,22 +9,23 @@ import (
 )
 
 type Meta struct {
-	// the default value -1 means the value is not set
-	CSWForced    int
-	CSWVoluntary int
-	Exitcode     int
-	MaxRSS       int
-	Time         float64
-	TimeWall     float64
+	// int: the default value -1 means the value is not set
+	CSWForced    int `json:"CSWForced"`
+	CSWVoluntary int `json:"CSWVoluntary"`
+	Exitcode     int `json:"exitcode"`
+	MaxRSS       int `json:"maxRSS"`
 
-	ExitSig int
-	Killed  bool
-	Message string
+	Time     float64 `json:"time"`
+	TimeWall float64 `json:"timeWall"`
+
+	ExitSig int    `json:"exitSig"`
+	Killed  bool   `json:"killed"`
+	Message string `json:"message"`
 	//RE: run-time error, i.e., exited with a non-zero exit code
 	//SG: program died on a signal
 	//TO: timed out
 	//XX: internal error of the sandbox
-	Status string
+	Status string `json:"status"`
 }
 
 func NewMeta() *Meta {
@@ -33,8 +34,6 @@ func NewMeta() *Meta {
 		CSWVoluntary: -1,
 		Exitcode:     -1,
 		MaxRSS:       -1,
-		Time:         -1,
-		TimeWall:     -1,
 		ExitSig:      -1,
 	}
 }
@@ -67,13 +66,13 @@ func (m *Meta) ReadFile(path string) error {
 		case "time":
 			float, err := strconv.ParseFloat(v, 64)
 			if err != nil {
-				m.Time = -1
+				float = 0
 			}
 			m.Time = float
 		case "time-wall":
 			float, err := strconv.ParseFloat(v, 64)
 			if err != nil {
-				m.TimeWall = -1
+				float = 0
 			}
 			m.TimeWall = float
 		case "exitsig":

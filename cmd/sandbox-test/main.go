@@ -25,12 +25,12 @@ func main() {
 	if err = s.Init(); err != nil {
 		panic(err)
 	}
-
+	in := []byte("123")
 	var out, eBuf bytes.Buffer
 	m := &sandbox.Meta{}
-	err = s.Run("/bin/sh", []string{"-c", "echo 123"},
+	err = s.Run("/bin/sh", []string{"-c", "cat - > t"},
 		sandbox.Network(true),
-		//sandbox.Stdin(bytes.NewReader(in)),
+		sandbox.Stdin(bytes.NewReader(in)),
 		sandbox.Stdout(&out),
 		sandbox.Stderr(&eBuf),
 		sandbox.Env(map[string]string{
@@ -46,4 +46,8 @@ func main() {
 		panic(err)
 	}
 
+	err = s.RemoveFile("t")
+	if err != nil {
+		panic(err)
+	}
 }
