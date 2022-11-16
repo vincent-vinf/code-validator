@@ -25,7 +25,7 @@ type Sandbox interface {
 
 	WriteFile(filepath string, data []byte) error
 	ReadFile(filepath string) ([]byte, error)
-	RemoveFile(recursive bool, paths ...string) error
+	RemoveFile(paths ...string) error
 }
 
 func New(id int) (Sandbox, error) {
@@ -117,11 +117,8 @@ func (i *Isolate) WriteFile(filepath string, data []byte) error {
 func (i *Isolate) ReadFile(filepath string) ([]byte, error) {
 	var outBuf, errBuf bytes.Buffer
 
-	err := i.Run("/bin/sh",
-		[]string{"-c", fmt.Sprintf("cat %s", filepath)},
-		Env(map[string]string{
-			"PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
-		}),
+	err := i.Run("/bin/cat",
+		[]string{filepath},
 		Stdout(&outBuf),
 		Stderr(&errBuf),
 	)
@@ -132,20 +129,19 @@ func (i *Isolate) ReadFile(filepath string) ([]byte, error) {
 
 	return outBuf.Bytes(), nil
 }
-func (i *Isolate) RemoveFile(recursive bool, paths ...string) error {
+func (i *Isolate) RemoveFile(paths ...string) error {
 	if len(paths) == 0 {
 		return nil
 	}
-	var cmd string
-	if recursive {
-		cmd = fmt.Sprintf("rm -rf %s", strings.Join(paths, " "))
-	} else {
-		cmd = fmt.Sprintf("rm -fd %s", strings.Join(paths, " "))
-	}
+	var errBuf bytes.Buffer
 
-	stdout, stderr, err := i.runSh(cmd, nil)
+	err := i.Run("/bin/rm",
+		append(paths, "-rf"),
+		Stderr(&errBuf),
+	)
+
 	if err != nil {
-		return fmt.Errorf("rm file err, stdout: %s, stderr: %s, %w", stdout, stderr, err)
+		return fmt.Errorf("rm file err, stderr: %s, %w", errBuf.String(), err)
 	}
 
 	return nil

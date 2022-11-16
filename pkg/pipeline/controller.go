@@ -107,7 +107,7 @@ func (e *Controller) Exec(pipeline *Pipeline) error {
 			paths[i] = files[i].Path
 		}
 
-		if err := e.box.RemoveFile(false, paths...); err != nil {
+		if err := e.box.RemoveFile(paths...); err != nil {
 			logger.Error(err)
 		}
 
@@ -120,11 +120,11 @@ func (e *Controller) Exec(pipeline *Pipeline) error {
 }
 func (e *Controller) Logs(steps ...string) []byte {
 	// todo
-	if len(steps) == 0 {
-		// get all
-	} else {
-		// get some
-	}
+	//if len(steps) == 0 {
+	//	// get all
+	//} else {
+	//	// get some
+	//}
 
 	return []byte{}
 }
