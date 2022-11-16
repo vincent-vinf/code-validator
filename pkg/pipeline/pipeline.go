@@ -2,93 +2,83 @@ package pipeline
 
 import (
 	"fmt"
-	"os"
-	"path"
-	"strings"
-)
 
-const (
-	GlobalFileType = "global"
-	// LocalFileType is only visible within the step
-	// when filetype is not specified, LocalFileType is the default value
-	LocalFileType = "local"
-
-	DefaultTempDir = "/var/local/lib/code-pipeline"
-
-	StepLogFile = "out"
+	"github.com/vincent-vinf/code-validator/pkg/sandbox"
 )
 
 type Pipeline struct {
-	Name  string
-	Steps []*Step
-	Files []*File
+	Name      string
+	Steps     []Step
+	Templates []Template
+	Files     []File
 }
 
-type Step struct {
+type Template struct {
 	Name string
 
 	Cmd  string
 	Args []string
+}
 
-	StdinFile string
-	RefFiles  []string
+type Step struct {
+	Name      string
+	Template  string
+	InputFile *InputFile
+	RefFiles  []RefFile
+
+	ContinueOnFail bool
+	NeedMate       bool
+
+	Limit *Limit
+}
+type Limit struct {
+}
+
+type InputFile struct {
+	Source  *FileSource
+	StepOut *StepOut
+}
+type StepOut struct {
+	StepName string
 }
 
 type File struct {
-	Name string
-	Type string
-	// Path must be a writable path in the sandbox
-	Path   string
+	Name   string
 	Source FileSource
 }
 
-func (f *File) Read() ([]byte, error) {
-	switch {
-	case f.Source.Raw != nil:
-		return f.Source.Raw.Content, nil
-	case f.Source.OSS != nil:
-		return []byte{}, nil
-	case f.Source.URL != nil:
-		return []byte{}, nil
-	case f.Source.Host != nil:
-		p := path.Clean(f.Source.Host.Path)
-		if !strings.HasPrefix(p, DefaultTempDir) {
-			return nil, fmt.Errorf("invalid path %s", f.Source.Host.Path)
-		}
-
-		return os.ReadFile(p)
-	default:
-		return nil, fmt.Errorf("file(%s) source not specified", f.Name)
-	}
+type RefFile struct {
+	FileName   string `json:"fileName"`
+	Path       string `json:"path"`
+	AutoRemove bool   `json:"autoRemove"`
 }
 
 type FileSource struct {
-	URL  *URL  `json:"url"`
-	Raw  *Raw  `json:"raw"`
-	OSS  *OSS  `json:"oss"`
-	Host *Host `json:"host"`
+	Raw *Raw `json:"raw,omitempty"`
+	OSS *OSS `json:"oss,omitempty"`
 }
-type URL struct {
-	Src string `json:"src"`
+
+func (f *FileSource) Read() ([]byte, error) {
+	switch {
+	case f.Raw != nil:
+		return f.Raw.Content, nil
+	case f.OSS != nil:
+		return []byte{}, nil
+	default:
+		return nil, fmt.Errorf("file source not specified")
+	}
 }
+
 type Raw struct {
 	Content []byte `json:"content"`
 }
 type OSS struct {
 	Path string `json:"path"`
 }
-type Host struct {
+type WorkdirFile struct {
 	Path string `json:"path"`
 }
-
-//{
-//"url":{
-//"src":""
-//},
-//"text":{
-//"content":""
-//},
-//"oss":{
-//"path":""
-//}
-//}
+type Result struct {
+	Metas map[string]*sandbox.Meta
+	Errs  map[string]error
+}

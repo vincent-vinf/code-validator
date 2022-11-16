@@ -18,6 +18,7 @@ const (
 
 type Sandbox interface {
 	GetID() int
+	Workdir() string
 
 	Init() error
 	Run(cmd string, args []string, opts ...Option) error
@@ -256,7 +257,7 @@ func Processes(num int) Option {
 	}
 }
 func FileSize(kb int) Option {
-	if kb < 0 {
+	if kb <= 0 {
 		kb = defaultFileSize
 	}
 	return func(r *run) {

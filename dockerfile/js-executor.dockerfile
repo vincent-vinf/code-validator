@@ -8,8 +8,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build go build -o bin/sandbox cmd/
 
 FROM node
 WORKDIR /app
-#RUN apt-get update && apt-get install -y libcap-dev && rm -rf /var/lib/apt/lists/* \
-#    && git clone https://github.com/ioi/isolate.git && make install -C isolate && rm -rf isolate \
+# git clone https://github.com/ioi/isolate.git && make install -C isolate && rm -rf isolate \
 RUN apt-get update && apt-get install -y libcap-dev && rm -rf /var/lib/apt/lists/* && \
     curl -L -o isolate.zip https://github.91chi.fun//https://github.com/ioi/isolate/archive/refs/heads/master.zip && \
     unzip isolate.zip && \

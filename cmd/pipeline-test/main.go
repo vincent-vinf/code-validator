@@ -1,71 +1,60 @@
 package main
 
 import (
-	"flag"
-	"math/rand"
-	"time"
+	"log"
 
 	"github.com/vincent-vinf/code-validator/pkg/pipeline"
-
-	"github.com/vincent-vinf/code-validator/pkg/sandbox"
 )
 
-func init() {
-	flag.Parse()
-	rand.Seed(time.Now().Unix())
-}
-
 func main() {
-	e, err := pipeline.NewController(rand.Int() % sandbox.MaxID)
+	e, err := pipeline.NewExecutor(5)
 	if err != nil {
-		panic(err)
+		log.Println(err)
+		return
 	}
-
-	t := &pipeline.Pipeline{
-		Name: "test-task",
-		Steps: []*pipeline.Step{
+	//defer e.Clean()
+	p := pipeline.Pipeline{
+		Name: "pp",
+		Steps: []pipeline.Step{
 			{
-				Name: "init",
-				Cmd:  "/bin/ls",
-				Args: []string{
-					"./",
-				},
-				RefFiles: []string{
-					"default",
-				},
-			},
-			{
-				Name: "run",
-				Cmd:  "/bin/ls",
-				Args: []string{
-					"./",
-				},
-				RefFiles: []string{},
-			},
-		},
-		Files: []*pipeline.File{
-			{
-				Name: "default",
-				Path: "./default",
-				Source: pipeline.FileSource{
-					Raw: &pipeline.Raw{
-						Content: []byte("Vincent\n"),
+				Name:     "a",
+				Template: "cat",
+				InputFile: &pipeline.InputFile{
+					Source: &pipeline.FileSource{
+						Raw: &pipeline.Raw{Content: []byte("1234")},
 					},
 				},
 			},
 			{
-				Name: "global",
-				Path: "./global",
-				Source: pipeline.FileSource{
-					Raw: &pipeline.Raw{
-						Content: []byte("123"),
+				Name:     "b",
+				Template: "cat",
+				InputFile: &pipeline.InputFile{
+					StepOut: &pipeline.StepOut{
+						StepName: "a",
 					},
 				},
-				Type: pipeline.GlobalFileType,
 			},
 		},
+		Templates: []pipeline.Template{
+			{
+				Name: "cat",
+				Cmd:  "/bin/cat",
+				Args: []string{
+					"-",
+				},
+			},
+		},
+		//Files: []ppp.File{
+		//	{
+		//		Name: "test",
+		//		Source: ppp.FileSource{
+		//			Raw: &ppp.Raw{Content: []byte("1234")},
+		//		},
+		//	},
+		//},
 	}
-	if err = e.Exec(t); err != nil {
+	if err = e.Exec(p); err != nil {
+		log.Println(err)
 		return
 	}
 }
