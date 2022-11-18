@@ -13,7 +13,7 @@ const (
 )
 
 type Task struct {
-	Init   *pipeline.Step
+	Init   *Init
 	Run    Code
 	Verify Validator
 
@@ -22,42 +22,35 @@ type Task struct {
 	Name    string
 	Runtime string
 }
-
+type Init struct {
+}
 type Code struct {
 	Source pipeline.FileSource
 }
 
 type Validator struct {
-	Custom     *pipeline.Step
+	Custom     *pipeline.Template
 	ExactMatch *ExactMatchValidator
 }
 
 type TestCase struct {
 	Name   string
-	Input  *pipeline.File
-	Output *pipeline.File
+	Input  *pipeline.FileSource
+	Output *pipeline.FileSource
 }
 
-func (v Validator) ToStep() (*pipeline.Step, error) {
+func (v Validator) ToTemplate() (*pipeline.Template, error) {
 	switch {
 	case v.Custom != nil:
 		return nil, fmt.Errorf("not implemented")
 	case v.ExactMatch != nil:
-		return &pipeline.Step{
+		return &pipeline.Template{
 			Name: VerifyStepName,
-			Cmd:  "/bin/sh",
+			Cmd:  "/usr/local/bin/code-validator",
 			Args: []string{
-				"-c",
-				fmt.Sprintf(
-					`
-code-validator match %s %s; ec=$?
-mkdir -p ./report;
-case $ec in
-    0) echo pass > ./report/result;;
-    1) exit 1;;
-    *) echo fail > ./report/result;;
-esac
-`, v.ExactMatch.File1, v.ExactMatch.File2),
+				"match",
+				v.ExactMatch.File1,
+				v.ExactMatch.File2,
 			},
 		}, nil
 	default:
