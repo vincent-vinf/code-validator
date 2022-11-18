@@ -2,8 +2,8 @@ package pipeline
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"path"
@@ -82,17 +82,14 @@ func (e *Executor) Exec(pipeline Pipeline) (*Result, error) {
 			return res, fmt.Errorf("template %s does not exist", step.Template)
 		}
 		var autoRemoveFilePaths []string
-		for _, f := range step.RefFiles {
-			file, ok := files[f.FileName]
-			if !ok {
-				return res, fmt.Errorf("file not exist: %s", f.FileName)
-			}
-			data, err := file.Source.Read()
+		for _, f := range step.FileRefs {
+			data, err := e.readDataRef(f.DataRef, files)
 			if err != nil {
-				return res, fmt.Errorf("get file %s, err: %w", f.FileName, err)
+				return res, fmt.Errorf("get file data err: %w", err)
 			}
+
 			if err = e.box.WriteFile(f.Path, data); err != nil {
-				return res, fmt.Errorf("copy file %s, err: %w", f.FileName, err)
+				return res, fmt.Errorf("copy file %s, err: %w", f.Path, err)
 			}
 			if f.AutoRemove {
 				autoRemoveFilePaths = append(autoRemoveFilePaths, f.Path)
@@ -100,17 +97,19 @@ func (e *Executor) Exec(pipeline Pipeline) (*Result, error) {
 		}
 
 		var meta *sandbox.Meta
-		if step.NeedMate {
+		if step.LogMate {
 			meta = sandbox.NewMeta()
+			res.Metas[step.Name] = meta
 		}
-		inReader, err := e.getInputReader(step.InputFile)
+
+		input, err := e.readDataRef(step.InputRef, files)
 		if err != nil {
 			return res, fmt.Errorf("get stdin of step %s, err: %w", step.Name, err)
 		}
 		var combinedOutBuf bytes.Buffer
 		cmdErr := e.box.Run(temp.Cmd, temp.Args,
 			sandbox.Network(true),
-			sandbox.Stdin(inReader),
+			sandbox.Stdin(bytes.NewReader(input)),
 			sandbox.Stdout(&combinedOutBuf),
 			sandbox.Stderr(&combinedOutBuf),
 			sandbox.Metadata(meta),
@@ -121,6 +120,10 @@ func (e *Executor) Exec(pipeline Pipeline) (*Result, error) {
 		)
 		if cmdErr != nil {
 			res.Errs[step.Name] = cmdErr
+
+			if !step.ContinueOnFail {
+				return res, cmdErr
+			}
 		}
 
 		if err = e.writeStepOut(step.Name, combinedOutBuf.Bytes()); err != nil {
@@ -143,26 +146,22 @@ func (e *Executor) Clean() error {
 	return nil
 }
 
-func (e *Executor) getInputReader(inputFile *InputFile) (io.Reader, error) {
-	if inputFile == nil {
+func (e *Executor) readDataRef(ref *DataRef, files map[string]*File) ([]byte, error) {
+	if ref == nil {
 		return nil, nil
 	}
-	var input []byte
-	var err error
 	switch {
-	case inputFile.Source != nil:
-		input, err = inputFile.Source.Read()
-		if err != nil {
-			return nil, err
+	case ref.ExternalRef != nil:
+		f, ok := files[ref.ExternalRef.FileName]
+		if !ok {
+			return nil, fmt.Errorf("file not exist: %s", ref.ExternalRef.FileName)
 		}
-	case inputFile.StepOut != nil:
-		input, err = e.readStepOut(inputFile.StepOut.StepName)
-		if err != nil {
-			return nil, err
-		}
+		return f.Content, nil
+	case ref.StepOutRef != nil:
+		return e.readStepOut(ref.StepOutRef.StepName)
+	default:
+		return nil, errors.New("data ref not specified")
 	}
-
-	return bytes.NewReader(input), nil
 }
 
 func (e *Executor) writeStepOut(stepName string, data []byte) error {

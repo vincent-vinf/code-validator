@@ -12,7 +12,7 @@ type Meta struct {
 	// int: the default value -1 means the value is not set
 	CSWForced    int `json:"CSWForced"`
 	CSWVoluntary int `json:"CSWVoluntary"`
-	Exitcode     int `json:"exitcode"`
+	ExitCode     int `json:"exitCode"`
 	MaxRSS       int `json:"maxRSS"`
 
 	Time     float64 `json:"time"`
@@ -32,7 +32,7 @@ func NewMeta() *Meta {
 	return &Meta{
 		CSWForced:    -1,
 		CSWVoluntary: -1,
-		Exitcode:     -1,
+		ExitCode:     -1,
 		MaxRSS:       -1,
 		ExitSig:      -1,
 	}
@@ -60,7 +60,7 @@ func (m *Meta) ReadFile(path string) error {
 		case "csw-voluntary":
 			m.CSWVoluntary = atoi(v)
 		case "exitcode":
-			m.Exitcode = atoi(v)
+			m.ExitCode = atoi(v)
 		case "max-rss":
 			m.MaxRSS = atoi(v)
 		case "time":

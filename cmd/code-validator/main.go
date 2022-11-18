@@ -23,7 +23,6 @@ var (
 	matchCmd = &cobra.Command{
 		Use:   "match",
 		Short: "Exactly match 2 files (remove carriage return at end of file)",
-		Long:  "exit code(0) file match\nexit code(1) Program running error, such as incorrect parameters\nexit code(2) file mismatch",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) != 2 {
 				return fmt.Errorf("parameter mismatch")
@@ -38,11 +37,13 @@ var (
 			}
 			d1 = bytes.TrimRight(d1, "\n")
 			d2 = bytes.TrimRight(d2, "\n")
-			if bytes.Equal(d1, d2) {
-				return nil
-			} else {
-				os.Exit(2)
+
+			if !bytes.Equal(d1, d2) {
+				logger.Info("fail")
+
+				os.Exit(1)
 			}
+			logger.Info("pass")
 
 			return nil
 		},

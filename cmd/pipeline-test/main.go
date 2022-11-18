@@ -19,18 +19,9 @@ func main() {
 			{
 				Name:     "a",
 				Template: "cat",
-				InputFile: &pipeline.InputFile{
-					Source: &pipeline.FileSource{
-						Raw: &pipeline.Raw{Content: []byte("1234")},
-					},
-				},
-			},
-			{
-				Name:     "b",
-				Template: "cat",
-				InputFile: &pipeline.InputFile{
-					StepOut: &pipeline.StepOut{
-						StepName: "a",
+				InputRef: &pipeline.DataRef{
+					ExternalRef: &pipeline.ExternalRef{
+						FileName: "input",
 					},
 				},
 			},
@@ -47,14 +38,16 @@ func main() {
 		//Files: []ppp.File{
 		//	{
 		//		Name: "test",
-		//		Source: ppp.FileSource{
+		//		SourceCode: ppp.SourceCode{
 		//			Raw: &ppp.Raw{Content: []byte("1234")},
 		//		},
 		//	},
 		//},
 	}
-	if err = e.Exec(p); err != nil {
+	_, err = e.Exec(p)
+	if err != nil {
 		log.Println(err)
+
 		return
 	}
 }

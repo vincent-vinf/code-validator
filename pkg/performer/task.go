@@ -14,7 +14,7 @@ const (
 
 type Task struct {
 	Init   *Init
-	Run    Code
+	Run    Run
 	Verify Validator
 
 	Cases []TestCase
@@ -24,44 +24,41 @@ type Task struct {
 }
 type Init struct {
 }
-type Code struct {
-	Source pipeline.FileSource
+type Run struct {
+	SourceCode []byte
 }
 
 type Validator struct {
-	Custom     *pipeline.Template
-	ExactMatch *ExactMatchValidator
+	Custom  *pipeline.Template
+	Default *DefaultValidator
 }
 
 type TestCase struct {
 	Name   string
-	Input  *pipeline.FileSource
-	Output *pipeline.FileSource
+	Input  []byte
+	Output []byte
 }
 
 func (v Validator) ToTemplate() (*pipeline.Template, error) {
 	switch {
 	case v.Custom != nil:
 		return nil, fmt.Errorf("not implemented")
-	case v.ExactMatch != nil:
+	case v.Default != nil:
 		return &pipeline.Template{
 			Name: VerifyStepName,
-			Cmd:  "/usr/local/bin/code-validator",
+			Cmd:  "/usr/local/bin/code-performer",
 			Args: []string{
 				"match",
-				v.ExactMatch.File1,
-				v.ExactMatch.File2,
+				"./output",
+				"./answer",
 			},
 		}, nil
 	default:
-		return nil, fmt.Errorf("no validator specified")
+		return nil, fmt.Errorf("no performer specified")
 	}
 }
 
-type ExactMatchValidator struct {
-	File1 string
-	File2 string
-}
+type DefaultValidator struct{}
 
 type Report struct {
 	Result string
@@ -69,6 +66,10 @@ type Report struct {
 }
 
 type CaseResult struct {
-	Result string
-	Time   string
+	Name   string
+	Result bool
+
+	ExitCode int
+	Time     float64
+	Memory   int
 }
