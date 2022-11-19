@@ -1,3 +1,5 @@
+//go:build javascript
+
 package performer
 
 import (
@@ -8,7 +10,8 @@ import (
 )
 
 const (
-	SupportRuntime = types.JavaScriptRuntime
+	SupportRuntime     = types.JavaScriptRuntime
+	npmInstallStepName = "npm-init"
 )
 
 type Performer struct {
@@ -36,7 +39,7 @@ func (p *Performer) Run(task *Task) (*Report, error) {
 
 	templates := []pipeline.Template{
 		{
-			Name: "npm-init",
+			Name: npmInstallStepName,
 			Cmd:  "/usr/local/bin/npm",
 			Args: []string{
 				"init",
@@ -55,8 +58,8 @@ func (p *Performer) Run(task *Task) (*Report, error) {
 	// todo add init step
 	steps := []pipeline.Step{
 		{
-			Name:     "npm-init",
-			Template: "npm-init",
+			Name:     npmInstallStepName,
+			Template: npmInstallStepName,
 			FileRefs: []pipeline.FileRef{
 				{
 					DataRef: &pipeline.DataRef{

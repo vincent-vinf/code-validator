@@ -46,7 +46,7 @@ func (v Validator) ToTemplate() (*pipeline.Template, error) {
 	case v.Default != nil:
 		return &pipeline.Template{
 			Name: VerifyStepName,
-			Cmd:  "/usr/local/bin/code-performer",
+			Cmd:  "/usr/local/bin/code-validator",
 			Args: []string{
 				"match",
 				"./output",

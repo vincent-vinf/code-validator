@@ -1,3 +1,5 @@
+//go:build javascript
+
 package runner
 
 import "github.com/vincent-vinf/code-validator/pkg/types"

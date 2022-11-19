@@ -14,6 +14,8 @@ access_image:
 
 js-executor:
 	docker build -t $(REGISTRY)/js-executor:$(TAG) -f ./dockerfile/js-executor.dockerfile $(WORK_DIR)
+python-executor:
+	docker build -t $(REGISTRY)/python-executor:$(TAG) -f ./dockerfile/python-executor.dockerfile $(WORK_DIR)
 
 push:
 	docker push $(REGISTRY)/spike-access-service:$(TAG)

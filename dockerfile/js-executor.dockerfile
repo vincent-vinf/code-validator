@@ -1,10 +1,9 @@
 FROM golang:1.19 as builder
 WORKDIR /app
 ADD . /app
-RUN --mount=type=cache,target=/root/.cache/go-build go build -o bin/sandbox cmd/sandbox-test/main.go && \
-    go build -o bin/performer cmd/performer-test/main.go && \
-    go build -o bin/code-performer cmd/code-performer/main.go && \
-    go build -o bin/pipeline cmd/pipeline-test/main.go
+RUN --mount=type=cache,target=/root/.cache/go-build go build -tags=javascript -o bin/sandbox cmd/sandbox-test/main.go && \
+    go build -tags=javascript -o bin/validator cmd/validator-test/main.go && \
+    go build -tags=javascript -o bin/code-validator cmd/code-validator/main.go
 
 FROM node
 WORKDIR /app
