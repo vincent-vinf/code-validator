@@ -8,11 +8,10 @@ RUN --mount=type=cache,target=/root/.cache/go-build go build -tags=javascript -o
 FROM node
 WORKDIR /app
 # git clone https://github.com/ioi/isolate.git && make install -C isolate && rm -rf isolate \
-RUN echo "deb http://mirrors.aliyun.com/debian bullseye main" > /etc/apt/sources.list &&\
-    echo "deb http://mirrors.aliyun.com/debian bullseye-updates main" >> /etc/apt/sources.list &&\
-    apt-get update
+# RUN echo "deb http://mirrors.aliyun.com/debian bullseye main" > /etc/apt/sources.list &&\
+#     echo "deb http://mirrors.aliyun.com/debian bullseye-updates main" >> /etc/apt/sources.list
 
-RUN apt-get install -y libcap-dev && apt-get clean && \
+RUN apt-get update && apt-get install -y libcap-dev && apt-get clean && \
     curl -L -o isolate.zip https://github.91chi.fun//https://github.com/ioi/isolate/archive/refs/heads/master.zip && \
     unzip isolate.zip && \
     make install -C isolate-master && \

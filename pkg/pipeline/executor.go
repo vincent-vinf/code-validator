@@ -106,6 +106,9 @@ func (e *Executor) Exec(pipeline Pipeline) (*Result, error) {
 		if err != nil {
 			return res, fmt.Errorf("get stdin of step %s, err: %w", step.Name, err)
 		}
+		if step.Limit != nil {
+
+		}
 		var combinedOutBuf bytes.Buffer
 		cmdErr := e.box.Run(temp.Cmd, temp.Args,
 			sandbox.Network(true),

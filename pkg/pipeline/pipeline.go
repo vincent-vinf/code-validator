@@ -29,7 +29,11 @@ type Step struct {
 
 	Limit *Limit
 }
+
 type Limit struct {
+	EnableNetWork bool
+	Memory        int
+	Time          float64
 }
 
 type DataRef struct {

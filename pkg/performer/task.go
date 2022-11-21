@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/vincent-vinf/code-validator/pkg/pipeline"
+	"github.com/vincent-vinf/code-validator/pkg/types"
 )
 
 const (
@@ -13,30 +14,57 @@ const (
 )
 
 type Task struct {
-	Init   *Init
+	Name    string
+	Runtime types.Runtime
+
+	Init   *Action
 	Run    Run
 	Verify Validator
 
 	Cases []TestCase
+}
 
-	Name    string
-	Runtime string
-}
-type Init struct {
-}
 type Run struct {
 	SourceCode []byte
 }
 
-type Validator struct {
-	Custom  *pipeline.Template
-	Default *DefaultValidator
+type Action struct {
+	Name  string
+	Cmd   string
+	Args  []string
+	Files []File
+}
+
+func (a *Action) GetTemplate() *pipeline.Template {
+	return &pipeline.Template{
+		Name: a.Name,
+		Cmd:  a.Cmd,
+		Args: a.Args,
+	}
+}
+func (a *Action) GetStep() *pipeline.Step {
+	return &pipeline.Step{
+		Name:           a.Name,
+		Template:       a.Name,
+		InputRef:       nil,
+		FileRefs:       nil,
+		ContinueOnFail: false,
+		LogMate:        false,
+		Limit:          nil,
+	}
+}
+func (a *Action) GetFiles() {
+
 }
 
 type TestCase struct {
 	Name   string
 	Input  []byte
 	Output []byte
+}
+type Validator struct {
+	Custom  *Action
+	Default *DefaultValidator
 }
 
 func (v Validator) ToTemplate() (*pipeline.Template, error) {
@@ -72,4 +100,10 @@ type CaseResult struct {
 	ExitCode int
 	Time     float64
 	Memory   int
+}
+
+type File struct {
+	Path       string `json:"path"`
+	Content    []byte `json:"content"`
+	AutoRemove bool   `json:"autoRemove"`
 }

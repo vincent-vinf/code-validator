@@ -26,26 +26,33 @@
 * 包安装
 
 ### TODO
-* 沙箱包装实现
-  * 需要cgroup，所以docker run --privileged
-* 文件管理
-* 多个测试样例，支持pipeline loop
-* 子函数支持
-* 编译支持
+- [x] 沙箱包装实现
+- [x] 文件管理
+- [x] 多个测试样例
+- [ ] 编译支持
+- [ ] 解压打包的代码
+  - [ ] zip
+
+- [ ] 自定义 初始化和验证步骤
+- [ ] 自动扩缩容
+- [ ] 多语言
+  - [x] JavaScript
+  - [x] Python
+  - [ ] C++
+
+
 
 
 
 ```bash
-isolate --run --stderr-to-stdout -o /tmp/o -- /bin/echo "123" > /tmp/123
-
 docker run -it --rm --privileged registry.cn-shanghai.aliyuncs.com/codev/js-executor:0.0.1 bash
 ```
 
 概念
 
 * sandbox：安全可控的执行用户操作
-* pipeline：控制一系列sandbox中的操作，支持loop，管理对外界文件的可见性
-* performer：本质是对pipeline的封装，实现 初始化-运行-验证 流程，对语言进行抽象
+* pipeline：控制一系列sandbox中的操作，管理对外界文件的可见性
+* performer：本质是对pipeline的封装，实现 初始化-运行-验证 流程，对语言进行抽象，循环处理测试用例
 * manager：对众多performer进行管理，提供新建验证任务，查询验证任务等接口
 
 
@@ -78,4 +85,8 @@ docker run -it --rm --privileged registry.cn-shanghai.aliyuncs.com/codev/js-exec
 使用rabbitmq[路由模式](https://www.rabbitmq.com/tutorials/tutorial-four-go.html)，管理不同语言实例
 
 多语言支持
+
+
+
+
 

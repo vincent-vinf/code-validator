@@ -10,34 +10,30 @@ import (
 )
 
 const (
-	SupportRuntime     = types.JavaScriptRuntime
 	npmInstallStepName = "npm-init"
 )
 
-type Performer struct {
-	id int
+var (
+	SupportRuntime = types.Runtime{
+		Lang:    types.JavaScriptRuntime,
+		Version: "latest",
+	}
+)
+
+type Lang struct {
+	runtime types.Runtime
 }
 
-func New(id int) *Performer {
-	return &Performer{
-		id: id,
+func NewLang(runtime types.Runtime) (*Lang, error) {
+	if runtime != SupportRuntime {
+		return nil, fmt.Errorf("the runtime(%s/%s) is not supported", runtime.Lang, runtime.Version)
 	}
+
+	return &Lang{runtime: runtime}, nil
 }
 
-func (p *Performer) Run(task *Task) (*Report, error) {
-	if task == nil {
-		return nil, fmt.Errorf("task cannot be nil")
-	}
-	if task.Runtime != SupportRuntime {
-		return nil, fmt.Errorf("the runtime(%s) is not supported", task.Runtime)
-	}
-
-	verifyTemp, err := task.Verify.ToTemplate()
-	if err != nil {
-		return nil, err
-	}
-
-	templates := []pipeline.Template{
+func (l *Lang) GetTemplates() []pipeline.Template {
+	return []pipeline.Template{
 		{
 			Name: npmInstallStepName,
 			Cmd:  "/usr/local/bin/npm",
@@ -53,17 +49,18 @@ func (p *Performer) Run(task *Task) (*Report, error) {
 				"./index.js",
 			},
 		},
-		*verifyTemp,
 	}
-	// todo add init step
-	steps := []pipeline.Step{
+}
+
+func (l *Lang) GetRunSteps() []pipeline.Step {
+	return []pipeline.Step{
 		{
 			Name:     npmInstallStepName,
 			Template: npmInstallStepName,
 			FileRefs: []pipeline.FileRef{
 				{
 					DataRef: &pipeline.DataRef{
-						ExternalRef: &pipeline.ExternalRef{FileName: "index.js"},
+						ExternalRef: &pipeline.ExternalRef{FileName: "code"},
 					},
 					Path: "./index.js",
 				},
@@ -77,85 +74,5 @@ func (p *Performer) Run(task *Task) (*Report, error) {
 				ExternalRef: &pipeline.ExternalRef{FileName: "input"},
 			},
 		},
-		{
-			Name:           VerifyStepName,
-			Template:       VerifyStepName,
-			ContinueOnFail: true,
-			FileRefs: []pipeline.FileRef{
-				{
-					DataRef: &pipeline.DataRef{
-						ExternalRef: &pipeline.ExternalRef{FileName: "answer"},
-					},
-					Path:       "./answer",
-					AutoRemove: true,
-				},
-				{
-					DataRef: &pipeline.DataRef{
-						StepOutRef: &pipeline.StepOutRef{StepName: RunStepName},
-					},
-					Path:       "./output",
-					AutoRemove: true,
-				},
-			},
-		},
 	}
-
-	rep := &Report{
-		Result: "pass",
-	}
-	for _, tc := range task.Cases {
-		pl := &pipeline.Pipeline{
-			Name:      task.Name,
-			Steps:     steps,
-			Templates: templates,
-			Files: []pipeline.File{
-				{
-					Name:    "index.js",
-					Content: task.Run.SourceCode,
-				},
-				{
-					Name:    "answer",
-					Content: tc.Output,
-				},
-				{
-					Name:    "input",
-					Content: tc.Input,
-				},
-			},
-		}
-		executor, err := pipeline.NewExecutor(p.id)
-		if err != nil {
-			return nil, err
-		}
-
-		res, err := executor.Exec(*pl)
-		if err != nil {
-			return nil, fmt.Errorf("exec fail, err: %w", err)
-		}
-
-		if err = executor.Clean(); err != nil {
-			return nil, err
-		}
-
-		casePass := true
-		if _, ok := res.Errs[VerifyStepName]; ok {
-			rep.Result = "fail"
-			casePass = false
-		}
-		meta, ok := res.Metas[RunStepName]
-		if !ok {
-			return nil, fmt.Errorf("the metadata of test case %s is missing", tc.Name)
-		}
-		rep.Cases = append(rep.Cases, CaseResult{
-			Name:   tc.Name,
-			Result: casePass,
-
-			ExitCode: meta.ExitCode,
-			Time:     meta.Time,
-			Memory:   meta.MaxRSS,
-		})
-
-	}
-
-	return rep, nil
 }

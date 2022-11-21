@@ -4,19 +4,18 @@ import (
 	"log"
 
 	"github.com/vincent-vinf/code-validator/pkg/performer"
-	"github.com/vincent-vinf/code-validator/pkg/types"
 )
 
 func main() {
 	t := &performer.Task{
 		Init: nil,
 		Run: performer.Run{
-			SourceCode: []byte("print(input())\n"),
+			SourceCode: []byte("const readline = require('readline').createInterface({\n    input: process.stdin,\n    output: process.stdout\n});\n\nreadline.question('', response => {\n    console.log(response)\n    readline.close();\n});\n"),
 		},
 		Verify: performer.Validator{
 			Default: &performer.DefaultValidator{},
 		},
-		Runtime: types.PythonRuntime,
+		Runtime: performer.SupportRuntime,
 		Cases: []performer.TestCase{
 			{
 				Name:   "c1",
