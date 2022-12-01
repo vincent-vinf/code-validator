@@ -19,10 +19,11 @@ type Template struct {
 }
 
 type Step struct {
-	Name     string
-	Template string
-	InputRef *DataRef
-	FileRefs []FileRef
+	Name           string
+	Template       string
+	InlineTemplate *Template
+	InputRef       *DataRef
+	FileRefs       []FileRef
 
 	ContinueOnFail bool
 	LogMate        bool

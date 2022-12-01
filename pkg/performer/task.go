@@ -18,14 +18,14 @@ type Task struct {
 	Runtime types.Runtime
 
 	Init   *Action
-	Run    Run
+	Code   Code
 	Verify Validator
 
 	Cases []TestCase
 }
 
-type Run struct {
-	SourceCode []byte
+type Code struct {
+	Data []byte
 }
 
 type Action struct {
@@ -35,17 +35,14 @@ type Action struct {
 	Files []File
 }
 
-func (a *Action) GetTemplate() *pipeline.Template {
-	return &pipeline.Template{
-		Name: a.Name,
-		Cmd:  a.Cmd,
-		Args: a.Args,
-	}
-}
 func (a *Action) GetStep() *pipeline.Step {
 	return &pipeline.Step{
-		Name:           a.Name,
-		Template:       a.Name,
+		Name: a.Name,
+		InlineTemplate: &pipeline.Template{
+			Name: a.Name,
+			Cmd:  a.Cmd,
+			Args: a.Args,
+		},
 		InputRef:       nil,
 		FileRefs:       nil,
 		ContinueOnFail: false,

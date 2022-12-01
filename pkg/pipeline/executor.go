@@ -49,6 +49,9 @@ func (e *Executor) Exec(pipeline Pipeline) (*Result, error) {
 	templates := make(map[string]*Template)
 	for i := range pipeline.Templates {
 		name := pipeline.Templates[i].Name
+		if name == "" {
+			return nil, errors.New("template name cannot be empty")
+		}
 		if _, ok := templates[name]; ok {
 			return nil, fmt.Errorf("duplicate template name: %s", name)
 		}
@@ -76,11 +79,16 @@ func (e *Executor) Exec(pipeline Pipeline) (*Result, error) {
 	for _, step := range pipeline.Steps {
 		log.Printf("run step: %s", step.Name)
 		var temp *Template
-		if t, ok := templates[step.Template]; ok {
-			temp = t
+		if step.InlineTemplate != nil {
+			temp = step.InlineTemplate
 		} else {
-			return res, fmt.Errorf("template %s does not exist", step.Template)
+			if t, ok := templates[step.Template]; ok {
+				temp = t
+			} else {
+				return res, fmt.Errorf("template %s does not exist", step.Template)
+			}
 		}
+
 		var autoRemoveFilePaths []string
 		for _, f := range step.FileRefs {
 			data, err := e.readDataRef(f.DataRef, files)

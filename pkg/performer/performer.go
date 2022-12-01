@@ -67,7 +67,7 @@ func (p *Performer) Run(task *Task) (*Report, error) {
 			Files: []pipeline.File{
 				{
 					Name:    "code",
-					Content: task.Run.SourceCode,
+					Content: task.Code.Data,
 				},
 				{
 					Name:    "answer",

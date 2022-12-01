@@ -86,7 +86,20 @@ docker run -it --rm --privileged registry.cn-shanghai.aliyuncs.com/codev/js-exec
 
 多语言支持
 
+模板支持，处于配置文件
 
+传统校验*测试样例数量
+
+* 可选init
+* 可选解压
+* 执行代码
+* 验证结果
+
+额外校验
+
+* 可选init
+* 可选解压
+* 验证
 
 
 
