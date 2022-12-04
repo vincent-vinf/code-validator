@@ -54,12 +54,6 @@ type Config struct {
 		MaxRefresh time.Duration
 	}
 
-	AdminJWT struct {
-		Secret     string
-		Timeout    time.Duration
-		MaxRefresh time.Duration
-	} `mapstructure:"admin_jwt"`
-
 	Redis struct {
 		Endpoint string
 		DB       int
@@ -72,10 +66,6 @@ type Config struct {
 		User   string
 		Passwd string
 	} `mapstructure:"rabbitmq"`
-
-	Spike struct {
-		RandUrlKey string `mapstructure:"rand_url_key"`
-	}
 }
 
 func GetConfig() Config {

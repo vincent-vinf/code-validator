@@ -41,9 +41,6 @@
   - [ ] C++
 
 
-
-
-
 ```bash
 docker run -it --rm --privileged registry.cn-shanghai.aliyuncs.com/codev/js-executor:0.0.1 bash
 ```

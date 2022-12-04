@@ -3,7 +3,7 @@ WORKDIR /app
 ADD . /app
 RUN --mount=type=cache,target=/root/.cache/go-build go build -tags=javascript -o bin/sandbox cmd/sandbox-test/main.go && \
     go build -tags=javascript -o bin/validator cmd/validator-test/main.go && \
-    go build -tags=javascript -o bin/code-validator cmd/code-validator/main.go
+    go build -tags=javascript -o bin/code-match cmd/code-match/main.go
 
 FROM node
 WORKDIR /app

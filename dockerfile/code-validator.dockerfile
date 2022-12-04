@@ -1,4 +1,4 @@
-FROM golang:1.18 as builder
+FROM golang:1.19 as builder
 
 WORKDIR /app
 
@@ -13,7 +13,7 @@ RUN mkdir -p "bin" && \
 
 # gcr.io/distroless/static
 # access
-FROM debian as access
+FROM ubuntu as access
 WORKDIR /
 COPY --from=builder /app/bin/access-service /
 USER root

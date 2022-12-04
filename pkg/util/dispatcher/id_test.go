@@ -16,7 +16,7 @@ func BenchmarkParallel(b *testing.B) {
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
 			id, err := ring.Get()
-			for errors.Is(err, SpaceFullErr) {
+			for errors.Is(err, QueueEmptyErr) {
 				time.Sleep(time.Microsecond)
 				id, err = ring.Get()
 			}

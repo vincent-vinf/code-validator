@@ -81,7 +81,7 @@ func runPython(c *gin.Context) {
 	}
 	id, err := idRing.Get()
 	if err != nil {
-		if errors.Is(err, dispatcher.SpaceFullErr) {
+		if errors.Is(err, dispatcher.QueueEmptyErr) {
 			c.JSON(http.StatusServiceUnavailable, gin.H{
 				"message": "the server is busy, please try again later",
 			})

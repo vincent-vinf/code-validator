@@ -3,7 +3,7 @@ WORKDIR /app
 ADD . /app
 RUN --mount=type=cache,target=/root/.cache/go-build go build -tags=python -o bin/sandbox cmd/sandbox-test/main.go && \
     go build -tags=python -o bin/validator cmd/validator-test/main.go && \
-    go build -tags=python -o bin/code-validator cmd/code-validator/main.go && \
+    go build -tags=python -o bin/code-match cmd/code-match/main.go && \
     go build -tags=python -o bin/python-runner cmd/python-runner/main.go
 
 FROM python
