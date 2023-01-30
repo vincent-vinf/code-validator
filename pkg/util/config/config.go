@@ -1,76 +1,50 @@
 package config
 
 import (
-	"sync"
+	"gopkg.in/yaml.v3"
+	"os"
 	"time"
-
-	"github.com/fsnotify/fsnotify"
-	"github.com/spf13/viper"
-
-	"github.com/vincent-vinf/code-validator/pkg/util/log"
 )
-
-var (
-	config = &Config{}
-	once   sync.Once
-	rwLock sync.RWMutex
-
-	logger = log.GetLogger()
-)
-
-func Init(configPath string) {
-	once.Do(func() {
-		viper.SetConfigFile(configPath)
-		if err := viper.ReadInConfig(); err != nil {
-			logger.Fatalln(err)
-		}
-		if err := viper.Unmarshal(config); err != nil {
-			logger.Fatalln(err)
-		}
-		viper.WatchConfig()
-		viper.OnConfigChange(func(in fsnotify.Event) {
-			rwLock.Lock()
-			if err := viper.Unmarshal(config); err != nil {
-				logger.Errorf("unmarshal conf failed, err:%s", err)
-			}
-			rwLock.Unlock()
-			logger.Info("config reloaded")
-		})
-	})
-}
 
 type Config struct {
 	Mysql struct {
-		Host     string
-		Port     string
-		User     string
-		Passwd   string
-		Database string
+		Host     string `yaml:"host"`
+		Port     string `yaml:"port"`
+		User     string `yaml:"user"`
+		Passwd   string `yaml:"passwd"`
+		Database string `yaml:"database"`
 	}
 
 	JWT struct {
-		Secret     string
-		Timeout    time.Duration
-		MaxRefresh time.Duration
+		Secret     string        `yaml:"secret"`
+		Timeout    time.Duration `yaml:"timeout"`
+		MaxRefresh time.Duration `yaml:"maxRefresh"`
 	}
 
 	Redis struct {
-		Endpoint string
-		DB       int
-		Passwd   string
+		Endpoint string `yaml:"endpoint"`
+		DB       int    `yaml:"db"`
+		Passwd   string `yaml:"passwd"`
 	}
 
 	RabbitMQ struct {
-		Host   string
-		Port   string
-		User   string
-		Passwd string
-	} `mapstructure:"rabbitmq"`
+		Host   string `yaml:"host"`
+		Port   string `yaml:"port"`
+		User   string `yaml:"user"`
+		Passwd string `yaml:"passwd"`
+	} `yaml:"rabbitmq"`
 }
 
-func GetConfig() Config {
-	rwLock.RLock()
-	defer rwLock.RUnlock()
+func Load(path string) (Config, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return Config{}, err
+	}
+	cfg := Config{}
 
-	return *config
+	if err = yaml.Unmarshal(data, &cfg); err != nil {
+		return Config{}, err
+	}
+
+	return cfg, nil
 }
