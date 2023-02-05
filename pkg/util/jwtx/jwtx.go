@@ -55,7 +55,7 @@ func GetAuthMiddleware(secret string, timeout, maxRefresh time.Duration) (*jwt.G
 		IdentityHandler: func(c *gin.Context) interface{} {
 			claims := jwt.ExtractClaims(c)
 			return &TokenUserInfo{
-				ID: claims[IdentityKey].(int),
+				ID: int(claims[IdentityKey].(float64)),
 			}
 		},
 		Authenticator: func(c *gin.Context) (interface{}, error) {
@@ -95,6 +95,7 @@ func GetAuthMiddleware(secret string, timeout, maxRefresh time.Duration) (*jwt.G
 	if err != nil {
 		return nil, errors.New("authMiddleware.MiddlewareInit() Error:" + err.Error())
 	}
+
 	return authMiddleware, nil
 }
 

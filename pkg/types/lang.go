@@ -8,6 +8,6 @@ const (
 )
 
 type Runtime struct {
-	Lang    string
-	Version string
+	Lang    string `json:"lang"`
+	Version string `json:"version"`
 }

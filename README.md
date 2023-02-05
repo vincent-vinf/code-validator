@@ -100,3 +100,44 @@ docker run -it --rm --privileged registry.cn-shanghai.aliyuncs.com/codev/js-exec
 
 
 
+测试用端口号
+
+* dispatcher：8001
+* user：8002
+* result：8003
+
+概念关系
+
+* batch：验证任务，包括多个验证项
+* verification：验证项
+* task：对于一个验证任务创建的任务实例，包含一份用户输入的代码文件，并引用了batch
+* subtask：对验证项的实例化，归属与task，引用了verification。是执行器执行的最小单元，保存了执行状态和执行结果
+
+oss路径规则
+
+* verification包含的文件
+
+
+
+已完成内容
+
+* 中间件对接（100%）mysql、minio、rabbitmq
+* 各个微服务（40%）完成用户服务，正在编写核心的分发和执行服务，执行服务基本完成
+* 前端（5%）完成框架选择和基本的代码执行demo UI
+* 整体k8s部署（0%）
+
+总体进度估计为（30%）
+
+下一个阶段目标
+
+* 完成执行和分发微服务（预计2月17开学前完成）
+* UI（开学后开始）
+
+当前问题：验证任务的执行结构需要优化一下，使得代码验证和自定义验证的结构统一
+
+
+
+
+
+文件解压缩问题
+

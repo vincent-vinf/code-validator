@@ -5,7 +5,6 @@ import (
 )
 
 type Pipeline struct {
-	Name      string
 	Steps     []Step
 	Templates []Template
 	Files     []File

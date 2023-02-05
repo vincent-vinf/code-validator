@@ -115,7 +115,7 @@ func (e *Executor) Exec(pipeline Pipeline) (*Result, error) {
 			return res, fmt.Errorf("get stdin of step %s, err: %w", step.Name, err)
 		}
 		if step.Limit != nil {
-
+			// todo add limit
 		}
 		var combinedOutBuf bytes.Buffer
 		cmdErr := e.box.Run(temp.Cmd, temp.Args,

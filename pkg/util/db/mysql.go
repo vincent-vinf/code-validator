@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/vincent-vinf/code-validator/pkg/orm"
 	"sync"
 	"time"
 
@@ -14,18 +15,17 @@ import (
 var (
 	db   *sql.DB
 	once sync.Once
-	cfg  config.Config
+	cfg  config.Mysql
 )
 
-func Init(config config.Config) {
+func Init(config config.Mysql) {
 	cfg = config
 }
 
 func getInstance() *sql.DB {
 	if db == nil {
 		once.Do(func() {
-			c := cfg.Mysql
-			source := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local", c.User, c.Passwd, c.Host, c.Port, c.Database)
+			source := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local", cfg.User, cfg.Passwd, cfg.Host, cfg.Port, cfg.Database)
 			var err error
 			db, err = sql.Open("mysql", source)
 			if err != nil {
@@ -103,6 +103,87 @@ func IsExistEmail(email string) (bool, error) {
 		return true, nil
 	}
 	return false, nil
+}
+
+func GetVerificationByID(id int) (*orm.Verification, error) {
+	db := getInstance()
+	rows, err := db.Query("select batch_id,name,data from verification where id = ?", id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	if rows.Next() {
+		v := &orm.Verification{
+			ID: id,
+		}
+		if err = rows.Scan(&v.BatchID, &v.Name, &v.Data); err != nil {
+			return nil, err
+		}
+
+		return v, nil
+	}
+
+	return nil, fmt.Errorf("the verification with id %d does not exist", id)
+}
+
+func GetTaskByID(id int) (*orm.Task, error) {
+	db := getInstance()
+	rows, err := db.Query("select user_id,batch_id,code,create_at from task where id = ?", id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	if rows.Next() {
+		v := &orm.Task{
+			ID: id,
+		}
+		if err = rows.Scan(&v.UserID, &v.BatchID, &v.Code, &v.CreateAt); err != nil {
+			return nil, err
+		}
+
+		return v, nil
+	}
+
+	return nil, fmt.Errorf("the verification with id %d does not exist", id)
+}
+
+func AddBatch(batch *orm.Batch) error {
+	db := getInstance()
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	r, err := tx.Exec("insert into batch(user_id, name, create_at) values (?,?,?)", batch.UserID, batch.Name, batch.CreateAt)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	id, err := r.LastInsertId()
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	stmt, err := tx.Prepare("insert into verification(batch_id, name, data) values (?,?,?)")
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	for _, v := range batch.Verifications {
+		_, err := stmt.Exec(id, v.Name, v.Data)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+
+	if err = tx.Commit(); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	return nil
 }
 
 //func GetUserById(id string) (*orm.User, error) {
