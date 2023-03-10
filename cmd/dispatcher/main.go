@@ -8,12 +8,17 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
+	"github.com/vincent-vinf/go-jsend"
 
 	"github.com/vincent-vinf/code-validator/pkg/orm"
 	"github.com/vincent-vinf/code-validator/pkg/util"
 	"github.com/vincent-vinf/code-validator/pkg/util/config"
 	"github.com/vincent-vinf/code-validator/pkg/util/db"
 	"github.com/vincent-vinf/code-validator/pkg/util/mq"
+)
+
+const (
+	defaultTmpDir = "/tmp"
 )
 
 var (
@@ -65,7 +70,7 @@ func main() {
 	router.GET("/:id", getBatchByID)
 	router.GET("", getBatchList)
 	router.POST("", addBatch)
-	router.GET("/token", addBatchToken)
+	router.GET("/token", getBatchToken)
 	router.POST("/token/:uid/upload", upload)
 
 	router.GET("/task/:id", getTaskByID)
@@ -81,7 +86,7 @@ func getBatchByID(c *gin.Context) {
 }
 
 func getBatchList(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{"message": "2"})
+	c.JSON(http.StatusOK, gin.H{"data": "2"})
 }
 
 func addBatch(c *gin.Context) {
@@ -91,12 +96,11 @@ func addBatch(c *gin.Context) {
 
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "1"})
+	c.JSON(http.StatusOK, gin.H{"data": "1"})
 }
 
-func addBatchToken(c *gin.Context) {
-	u := uuid.New()
-	c.JSON(http.StatusOK, gin.H{"message": u.String()})
+func getBatchToken(c *gin.Context) {
+	c.JSON(http.StatusOK, jsend.Success(uuid.New().String()))
 }
 
 func upload(c *gin.Context) {
