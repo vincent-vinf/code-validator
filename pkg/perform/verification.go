@@ -2,14 +2,15 @@ package perform
 
 import (
 	"context"
+	"fmt"
 	"github.com/vincent-vinf/code-validator/pkg/pipeline"
 )
 
 type Verification struct {
 	Name    string              `json:"name"`
 	Runtime string              `json:"runtime"`
-	Code    *CodeVerification   `json:"code"`
-	Custom  *CustomVerification `json:"custom"`
+	Code    *CodeVerification   `json:"code,omitempty"`
+	Custom  *CustomVerification `json:"custom,omitempty"`
 }
 
 type CodeVerification struct {
@@ -19,29 +20,50 @@ type CodeVerification struct {
 }
 
 type CustomVerification struct {
-	Actions []Action `json:"actions"`
+	Action Action `json:"action"`
 }
 
 type Action struct {
-	Name    string
+	Name    string `json:"name"`
 	Command string `json:"command"`
 	Files   []File `json:"files"`
 }
 
 func (a *Action) ToStep() *pipeline.Step {
+	fileRefs := make([]pipeline.FileRef, len(a.Files))
+	for i := range a.Files {
+		fileRefs[i].Path = a.Files[i].Path
+		fileRefs[i].DataRef.ExternalRef = &pipeline.ExternalRef{
+			FileName: fmt.Sprintf("%s-%s", a.Name, a.Files[i].Path),
+		}
+	}
 	return &pipeline.Step{
 		Name: a.Name,
 		InlineTemplate: &pipeline.Template{
 			Name: a.Name,
-			Cmd:  "sh",
+			Cmd:  "/bin/sh",
 			Args: []string{"-c", a.Command},
 		},
 		InputRef:       nil,
-		FileRefs:       nil,
+		FileRefs:       fileRefs,
 		ContinueOnFail: false,
 		LogMate:        false,
 		Limit:          nil,
 	}
+}
+
+func (a *Action) GetFiles() ([]pipeline.File, error) {
+	res := make([]pipeline.File, len(a.Files))
+	for i := range a.Files {
+		data, err := a.Files[i].Read()
+		if err != nil {
+			return nil, err
+		}
+		res[i].Content = data
+		res[i].Name = fmt.Sprintf("%s-%s", a.Name, a.Files[i].Path)
+	}
+
+	return res, nil
 }
 
 type File struct {

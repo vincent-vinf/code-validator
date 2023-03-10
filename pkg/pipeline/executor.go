@@ -110,10 +110,15 @@ func (e *Executor) Exec(pipeline Pipeline) (*Result, error) {
 			res.Metas[step.Name] = meta
 		}
 
-		input, err := e.readDataRef(step.InputRef, files)
-		if err != nil {
-			return res, fmt.Errorf("get stdin of step %s, err: %w", step.Name, err)
+		var input []byte
+		if step.InputRef != nil {
+			var err error
+			input, err = e.readDataRef(*step.InputRef, files)
+			if err != nil {
+				return res, fmt.Errorf("get stdin of step %s, err: %w", step.Name, err)
+			}
 		}
+
 		if step.Limit != nil {
 			// todo add limit
 		}
@@ -129,6 +134,9 @@ func (e *Executor) Exec(pipeline Pipeline) (*Result, error) {
 				"PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
 			}),
 		)
+		if err := e.writeStepOut(step.Name, combinedOutBuf.Bytes()); err != nil {
+			return res, fmt.Errorf("write step out file, err: %w", err)
+		}
 		if cmdErr != nil {
 			res.Errs[step.Name] = cmdErr
 
@@ -137,11 +145,7 @@ func (e *Executor) Exec(pipeline Pipeline) (*Result, error) {
 			}
 		}
 
-		if err = e.writeStepOut(step.Name, combinedOutBuf.Bytes()); err != nil {
-			return res, fmt.Errorf("write step out file, err: %w", err)
-		}
-
-		if err = e.box.RemoveFile(autoRemoveFilePaths...); err != nil {
+		if err := e.box.RemoveFile(autoRemoveFilePaths...); err != nil {
 			return res, fmt.Errorf("auto remove files err: %w", err)
 		}
 	}
@@ -157,10 +161,7 @@ func (e *Executor) Clean() error {
 	return nil
 }
 
-func (e *Executor) readDataRef(ref *DataRef, files map[string]*File) ([]byte, error) {
-	if ref == nil {
-		return nil, nil
-	}
+func (e *Executor) readDataRef(ref DataRef, files map[string]*File) ([]byte, error) {
 	switch {
 	case ref.ExternalRef != nil:
 		f, ok := files[ref.ExternalRef.FileName]

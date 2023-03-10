@@ -1,0 +1,22 @@
+{
+  "code": {
+    "init": null,
+    "cases": [
+      {
+        "In": {
+          "path": "",
+          "ossPath": "t/1.txt"
+        },
+        "Out": {
+          "path": "",
+          "ossPath": "t/1.txt"
+        },
+        "Name": "1"
+      }
+    ],
+    "verify": "/usr/local/bin/code-match match ./output ./answer"
+  },
+  "name": "123",
+  "custom": null,
+  "runtime": "Python"
+}

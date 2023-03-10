@@ -25,7 +25,7 @@ func GetCodeSteps() []pipeline.Step {
 			},
 			FileRefs: []pipeline.FileRef{
 				{
-					DataRef: &pipeline.DataRef{
+					DataRef: pipeline.DataRef{
 						ExternalRef: &pipeline.ExternalRef{FileName: "code"},
 					},
 					Path: "./main.py",

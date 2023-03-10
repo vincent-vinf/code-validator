@@ -23,7 +23,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	db.Init(cfg)
+	db.Init(cfg.Mysql)
 	defer db.Close()
 	ossClient, err := oss.NewClient(cfg)
 	if err != nil {

@@ -41,7 +41,7 @@ type DataRef struct {
 	StepOutRef  *StepOutRef  `json:"stepOutRef,omitempty"`
 }
 type FileRef struct {
-	*DataRef
+	DataRef
 
 	Path       string `json:"path"`
 	AutoRemove bool   `json:"autoRemove"`

@@ -66,14 +66,14 @@ func runCode(code *CodeVerification, codePath string) (*Report, error) {
 		ContinueOnFail: true,
 		FileRefs: []pipeline.FileRef{
 			{
-				DataRef: &pipeline.DataRef{
+				DataRef: pipeline.DataRef{
 					ExternalRef: &pipeline.ExternalRef{FileName: "output"},
 				},
 				Path:       "./answer",
 				AutoRemove: true,
 			},
 			{
-				DataRef: &pipeline.DataRef{
+				DataRef: pipeline.DataRef{
 					StepOutRef: &pipeline.StepOutRef{StepName: RunStepName},
 				},
 				Path:       "./output",
@@ -189,18 +189,19 @@ func runCustom(custom *CustomVerification, codePath string) (*Report, error) {
 	}
 	defer idDispatcher.Release(id)
 
-	var steps []pipeline.Step
-	for _, action := range custom.Actions {
-		steps = append(steps, *action.ToStep())
+	files, err := custom.Action.GetFiles()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get action files, err: %w", err)
 	}
+
 	pl := &pipeline.Pipeline{
-		Steps: steps,
-		Files: []pipeline.File{
-			{
-				Name:    "code",
-				Content: codeData,
-			},
+		Steps: []pipeline.Step{
+			*custom.Action.ToStep(),
 		},
+		Files: append(files, pipeline.File{
+			Name:    "code",
+			Content: codeData,
+		}),
 	}
 
 	res, err := execute(id, pl)
