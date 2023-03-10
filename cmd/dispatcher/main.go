@@ -2,8 +2,13 @@ package main
 
 import (
 	"flag"
+	"net/http"
+	"path/filepath"
+
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
+
 	"github.com/vincent-vinf/code-validator/pkg/orm"
 	"github.com/vincent-vinf/code-validator/pkg/util"
 	"github.com/vincent-vinf/code-validator/pkg/util/config"
@@ -60,6 +65,9 @@ func main() {
 	router.GET("/:id", getBatchByID)
 	router.GET("", getBatchList)
 	router.POST("", addBatch)
+	router.GET("/token", addBatchToken)
+	router.POST("/token/:uid/upload", upload)
+
 	router.GET("/task/:id", getTaskByID)
 	router.GET("/:id/task", getTaskByBatchID)
 	router.POST("/:id/task", addTaskOfBatch)
@@ -73,7 +81,7 @@ func getBatchByID(c *gin.Context) {
 }
 
 func getBatchList(c *gin.Context) {
-	c.JSON(200, gin.H{"message": "2"})
+	c.JSON(http.StatusOK, gin.H{"message": "2"})
 }
 
 func addBatch(c *gin.Context) {
@@ -83,17 +91,48 @@ func addBatch(c *gin.Context) {
 
 		return
 	}
-	c.JSON(200, gin.H{"message": "1"})
+	c.JSON(http.StatusOK, gin.H{"message": "1"})
+}
+
+func addBatchToken(c *gin.Context) {
+	u := uuid.New()
+	c.JSON(http.StatusOK, gin.H{"message": u.String()})
+}
+
+func upload(c *gin.Context) {
+	var err error
+	defer func() {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+	}()
+	uid := c.Param("uid")
+
+	c.Query("key")
+
+	path := c.Param("path")
+	file, err := c.FormFile("file")
+	if err != nil {
+		return
+	}
+	log.Println(file.Filename)
+	path = filepath.Clean(path)
+
+	//todo fix filename
+	err = c.SaveUploadedFile(file, filepath.Join(uid, path))
+	if err != nil {
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": file.Filename})
 }
 
 func getTaskByID(c *gin.Context) {
-	c.JSON(200, gin.H{"message": "2"})
+	c.JSON(http.StatusOK, gin.H{"message": "2"})
 }
 
 func getTaskByBatchID(c *gin.Context) {
-	c.JSON(200, gin.H{"message": "2"})
+	c.JSON(http.StatusOK, gin.H{"message": "2"})
 }
 
 func addTaskOfBatch(c *gin.Context) {
-	c.JSON(200, gin.H{"message": "3"})
+	c.JSON(http.StatusOK, gin.H{"message": "3"})
 }
