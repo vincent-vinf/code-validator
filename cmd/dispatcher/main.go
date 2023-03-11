@@ -2,23 +2,26 @@ package main
 
 import (
 	"flag"
-	"net/http"
-	"path/filepath"
-
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
-	"github.com/vincent-vinf/go-jsend"
+	"github.com/vincent-vinf/code-validator/pkg/util/jwtx"
+	"github.com/vincent-vinf/code-validator/pkg/util/oss"
+	"net/http"
+	"path"
+	"strconv"
 
 	"github.com/vincent-vinf/code-validator/pkg/orm"
 	"github.com/vincent-vinf/code-validator/pkg/util"
 	"github.com/vincent-vinf/code-validator/pkg/util/config"
 	"github.com/vincent-vinf/code-validator/pkg/util/db"
 	"github.com/vincent-vinf/code-validator/pkg/util/mq"
+	"github.com/vincent-vinf/go-jsend"
 )
 
 const (
-	defaultTmpDir = "/tmp"
+	defaultTmpDir      = "tmp"
+	defaultContentType = gin.MIMEPlain
 )
 
 var (
@@ -27,6 +30,7 @@ var (
 	port       = flag.Int("port", 8001, "")
 
 	pubClient *mq.PubClient
+	ossClient *oss.Client
 )
 
 func init() {
@@ -41,10 +45,11 @@ func main() {
 
 	db.Init(cfg.Mysql)
 	defer db.Close()
-	//ossClient, err := oss.NewClient(cfg)
-	//if err != nil {
-	//	log.Fatal(err)
-	//}
+
+	ossClient, err = oss.NewClient(cfg.Minio)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	pubClient, err = mq.NewPubClient(cfg.RabbitMQ)
 	if err != nil {
@@ -54,24 +59,24 @@ func main() {
 	r := gin.New()
 	//gin.SetMode(gin.ReleaseMode)
 	r.Use(gin.Logger())
+	r.Use(util.Cors())
 	r.Use(gin.Recovery())
 
 	r.NoRoute(func(c *gin.Context) {
 		c.JSON(404, gin.H{"message": "Page not found"})
 	})
 
-	//authMiddleware, err := jwtx.GetAuthMiddleware(cfg.JWT.Secret, cfg.JWT.Timeout, cfg.JWT.MaxRefresh)
-	//if err != nil {
-	//	log.Fatal(err)
-	//}
+	authMiddleware, err := jwtx.GetAuthMiddleware(cfg.JWT.Secret, cfg.JWT.Timeout, cfg.JWT.MaxRefresh)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	router := r.Group("/batch")
-	//router.Use(authMiddleware.MiddlewareFunc())
+	router.Use(authMiddleware.MiddlewareFunc())
 	router.GET("/:id", getBatchByID)
 	router.GET("", getBatchList)
 	router.POST("", addBatch)
-	router.GET("/token", getBatchToken)
-	router.POST("/token/:uid/upload", upload)
+	router.POST("/file", uploadFile)
 
 	router.GET("/task/:id", getTaskByID)
 	router.GET("/:id/task", getTaskByBatchID)
@@ -99,34 +104,43 @@ func addBatch(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"data": "1"})
 }
 
-func getBatchToken(c *gin.Context) {
-	c.JSON(http.StatusOK, jsend.Success(uuid.New().String()))
-}
+func uploadFile(c *gin.Context) {
+	t, _ := c.Get(jwtx.IdentityKey)
+	user := t.(*jwtx.TokenUserInfo)
 
-func upload(c *gin.Context) {
 	var err error
 	defer func() {
-		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, jsend.SimpleErr(err.Error()))
+		}
 	}()
-	uid := c.Param("uid")
 
-	c.Query("key")
-
-	path := c.Param("path")
 	file, err := c.FormFile("file")
 	if err != nil {
 		return
 	}
-	log.Println(file.Filename)
-	path = filepath.Clean(path)
+	log.Info("filename:", file.Filename)
 
-	//todo fix filename
-	err = c.SaveUploadedFile(file, filepath.Join(uid, path))
+	contentType := defaultContentType
+	if len(file.Header["Content-Type"]) > 0 {
+		contentType = file.Header["Content-Type"][0]
+	}
+
+	uuidName := uuid.New().String()
+
+	fileData, err := file.Open()
+	if err != nil {
+		return
+	}
+	defer fileData.Close()
+
+	err = ossClient.Put(c, path.Join(defaultTmpDir, strconv.Itoa(user.ID), uuidName),
+		fileData, file.Size, contentType)
 	if err != nil {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": file.Filename})
+	c.JSON(http.StatusOK, jsend.Success(uuidName))
 }
 
 func getTaskByID(c *gin.Context) {

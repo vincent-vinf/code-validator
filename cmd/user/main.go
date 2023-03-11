@@ -26,13 +26,15 @@ func main() {
 		log.Fatal(err)
 	}
 
-	db.Init(cfg)
+	db.Init(cfg.Mysql)
 	defer db.Close()
 
 	r := gin.New()
 	//gin.SetMode(gin.ReleaseMode)
 	r.Use(gin.Logger())
 	r.Use(gin.Recovery())
+	r.Use(util.Cors())
+
 	r.NoRoute(func(c *gin.Context) {
 		c.JSON(404, gin.H{"message": "Page not found"})
 	})

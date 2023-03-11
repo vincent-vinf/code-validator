@@ -1,9 +1,9 @@
 package oss
 
 import (
-	"bytes"
 	"context"
 	"fmt"
+	"github.com/sirupsen/logrus"
 	"io"
 
 	"github.com/minio/minio-go/v7"
@@ -17,8 +17,7 @@ type Client struct {
 	bucket string
 }
 
-func NewClient(config config.Config) (*Client, error) {
-	cfg := config.Minio
+func NewClient(cfg config.Minio) (*Client, error) {
 	minioClient, err := minio.New(cfg.Endpoint, &minio.Options{
 		Creds:  credentials.NewStaticV4(cfg.AccessKeyID, cfg.SecretAccessKey, ""),
 		Secure: false,
@@ -48,8 +47,10 @@ func (c *Client) Get(ctx context.Context, path string) ([]byte, error) {
 	return buffer, nil
 }
 
-func (c *Client) Put(ctx context.Context, path string, data []byte) error {
-	_, err := c.client.PutObject(ctx, c.bucket, path, bytes.NewReader(data), int64(len(data)), minio.PutObjectOptions{ContentType: "text/plain"})
+func (c *Client) Put(ctx context.Context, path string, data io.Reader, len int64, contentType string) error {
+	// gin.MIMEPlain
+	_, err := c.client.PutObject(ctx, c.bucket, path, data, len, minio.PutObjectOptions{ContentType: contentType})
+	logrus.Infof("put file in path(%s) with contentType(%s)", path, contentType)
 
 	return err
 }
