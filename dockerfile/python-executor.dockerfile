@@ -3,7 +3,8 @@ WORKDIR /app
 ADD . /app
 RUN --mount=type=cache,target=/root/.cache/go-build go build -tags=python -o bin/actuator cmd/actuator/main.go && \
     go build -tags=python -o bin/code-match cmd/code-match/main.go && \
-    go build -tags=python -o bin/perform-test cmd/test/perform-test/main.go
+    go build -tags=python -o bin/perform-test cmd/test/perform-test/main.go && \
+    go build -tags=python -o bin/dispatcher cmd/dispatcher/main.go
 
 FROM python
 WORKDIR /app

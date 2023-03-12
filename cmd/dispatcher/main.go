@@ -16,7 +16,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/vincent-vinf/go-jsend"
 
-	"github.com/vincent-vinf/code-validator/pkg/orm"
 	"github.com/vincent-vinf/code-validator/pkg/perform"
 	"github.com/vincent-vinf/code-validator/pkg/util"
 	"github.com/vincent-vinf/code-validator/pkg/util/config"
@@ -85,6 +84,9 @@ func main() {
 		log.Fatal(err)
 	}
 
+	// todo: for test
+	perform.SetOssClient(ossClient)
+
 	router := r.Group("/batch")
 	router.Use(authMiddleware.MiddlewareFunc())
 	router.GET("/:id", getBatchByID)
@@ -111,13 +113,31 @@ func getBatchList(c *gin.Context) {
 }
 
 func addBatch(c *gin.Context) {
-	batch := &orm.Batch{}
-	if err := c.BindJSON(batch); err != nil {
-		c.JSON(400, gin.H{"message": err.Error()})
-
+	var err error
+	defer func() {
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, jsend.SimpleErr(err.Error()))
+		}
+	}()
+	//batch := &orm.Batch{}
+	type T struct {
+		Verifications []*perform.Verification
+	}
+	batch := &T{}
+	if err = c.BindJSON(batch); err != nil {
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"data": "1"})
+	var res []*perform.Report
+	for _, vf := range batch.Verifications {
+		var rep *perform.Report
+		rep, err = perform.Perform(vf, "t/in2out.py")
+		if err != nil {
+			return
+		}
+		res = append(res, rep)
+	}
+
+	c.JSON(http.StatusOK, jsend.Success(res))
 }
 
 func uploadFile(c *gin.Context) {

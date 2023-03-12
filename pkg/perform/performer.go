@@ -3,11 +3,12 @@ package perform
 import (
 	"errors"
 	"fmt"
+	"strings"
+
 	"github.com/vincent-vinf/code-validator/pkg/pipeline"
 	"github.com/vincent-vinf/code-validator/pkg/types"
 	"github.com/vincent-vinf/code-validator/pkg/util/dispatcher"
 	"github.com/vincent-vinf/code-validator/pkg/util/oss"
-	"strings"
 )
 
 const (
@@ -253,11 +254,11 @@ func execute(id int, pl *pipeline.Pipeline) (res *pipeline.Result, err error) {
 	if err != nil {
 		return nil, err
 	}
-	//defer func(executor *pipeline.Executor) {
-	//	if e := executor.Clean(); e != nil {
-	//		err = e
-	//	}
-	//}(executor)
+	defer func(executor *pipeline.Executor) {
+		if e := executor.Clean(); e != nil {
+			err = e
+		}
+	}(executor)
 	res, err = executor.Exec(*pl)
 
 	return

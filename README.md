@@ -44,6 +44,7 @@
 ```bash
 docker run -it --rm --privileged registry.cn-shanghai.aliyuncs.com/codev/js-executor:0.0.1 bash
 docker run -it --rm --privileged -v C:\Users\85761\repo\code-validator\configs:/app/configs registry.cn-shanghai.aliyuncs.com/codev/python-executor:0.0.1 bash
+docker run -it --rm --privileged -v C:\Users\85761\repo\code-validator\configs:/app/configs -p 8001:8001 registry.cn-shanghai.aliyuncs.com/codev/python-executor:0.0.1 dispatcher
 ```
 
 概念

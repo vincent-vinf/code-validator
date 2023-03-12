@@ -1,10 +1,11 @@
 package db
 
 import (
-	"github.com/vincent-vinf/code-validator/pkg/orm"
-	"github.com/vincent-vinf/code-validator/pkg/util/config"
 	"testing"
 	"time"
+
+	"github.com/vincent-vinf/code-validator/pkg/orm"
+	"github.com/vincent-vinf/code-validator/pkg/util/config"
 )
 
 func TestJson(t *testing.T) {
@@ -17,9 +18,9 @@ func TestJson(t *testing.T) {
 	defer Close()
 
 	err = AddBatch(&orm.Batch{
-		UserID:   1,
-		Name:     "test",
-		CreateAt: time.Now(),
+		UserID:    1,
+		Name:      "test",
+		CreatedAt: time.Now(),
 		Verifications: []*orm.Verification{
 			{
 				Name: "123",

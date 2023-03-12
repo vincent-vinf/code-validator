@@ -4,11 +4,13 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/vincent-vinf/code-validator/pkg/orm"
 	"sync"
 	"time"
 
+	"github.com/vincent-vinf/code-validator/pkg/orm"
+
 	_ "github.com/go-sql-driver/mysql"
+
 	"github.com/vincent-vinf/code-validator/pkg/util/config"
 )
 
@@ -139,7 +141,7 @@ func GetTaskByID(id int) (*orm.Task, error) {
 		v := &orm.Task{
 			ID: id,
 		}
-		if err = rows.Scan(&v.UserID, &v.BatchID, &v.Code, &v.CreateAt); err != nil {
+		if err = rows.Scan(&v.UserID, &v.BatchID, &v.Code, &v.CreatedAt); err != nil {
 			return nil, err
 		}
 
@@ -155,7 +157,7 @@ func AddBatch(batch *orm.Batch) error {
 	if err != nil {
 		return err
 	}
-	r, err := tx.Exec("insert into batch(user_id, name, create_at) values (?,?,?)", batch.UserID, batch.Name, batch.CreateAt)
+	r, err := tx.Exec("insert into batch(user_id, name, create_at) values (?,?,?)", batch.UserID, batch.Name, batch.CreatedAt)
 	if err != nil {
 		tx.Rollback()
 		return err
