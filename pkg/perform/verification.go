@@ -3,6 +3,7 @@ package perform
 import (
 	"context"
 	"fmt"
+
 	"github.com/vincent-vinf/code-validator/pkg/pipeline"
 )
 
@@ -16,11 +17,12 @@ type Verification struct {
 type CodeVerification struct {
 	Init   *Action    `json:"init"`
 	Verify string     `json:"verify"`
+	Files  []File     `json:"files"`
 	Cases  []TestCase `json:"cases"`
 }
 
 type CustomVerification struct {
-	Action Action `json:"action"`
+	Action
 }
 
 type Action struct {
@@ -67,9 +69,9 @@ func (a *Action) GetFiles() ([]pipeline.File, error) {
 }
 
 type File struct {
-	Path string `json:"path"`
+	Path string `json:"path,omitempty"`
 	//IsZipped bool   `json:"isZipped"`
-	OssPath string `json:"ossPath"`
+	OssPath string `json:"ossPath,omitempty"`
 }
 
 func (f *File) Read() ([]byte, error) {

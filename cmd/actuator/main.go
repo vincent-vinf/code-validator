@@ -25,7 +25,7 @@ func main() {
 	}
 	db.Init(cfg.Mysql)
 	defer db.Close()
-	ossClient, err := oss.NewClient(cfg)
+	ossClient, err := oss.NewClient(cfg.Minio)
 	if err != nil {
 		log.Fatal(err)
 	}
