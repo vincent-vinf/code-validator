@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"gopkg.in/yaml.v2"
+
 	"github.com/vincent-vinf/code-validator/pkg/pipeline"
 )
 
@@ -12,6 +14,14 @@ type Verification struct {
 	Runtime string              `json:"runtime"`
 	Code    *CodeVerification   `json:"code,omitempty"`
 	Custom  *CustomVerification `json:"custom,omitempty"`
+}
+
+func (vf Verification) String() string {
+	data, err := yaml.Marshal(vf)
+	if err != nil {
+		return fmt.Sprintf("yaml marshal err: %s", err)
+	}
+	return string(data)
 }
 
 type CodeVerification struct {
@@ -36,7 +46,7 @@ func (a *Action) ToStep() *pipeline.Step {
 	for i := range a.Files {
 		fileRefs[i].Path = a.Files[i].Path
 		fileRefs[i].DataRef.ExternalRef = &pipeline.ExternalRef{
-			FileName: fmt.Sprintf("%s-%s", a.Name, a.Files[i].Path),
+			FileName: getFileName(a.Name, a.Files[i].Path),
 		}
 	}
 	return &pipeline.Step{
@@ -55,17 +65,23 @@ func (a *Action) ToStep() *pipeline.Step {
 }
 
 func (a *Action) GetFiles() ([]pipeline.File, error) {
-	res := make([]pipeline.File, len(a.Files))
-	for i := range a.Files {
-		data, err := a.Files[i].Read()
+	return ToPipelineFile(a.Name, a.Files)
+}
+
+func ToPipelineFile(stepName string, files []File) (res []pipeline.File, err error) {
+	var data []byte
+	for i := range files {
+		data, err = files[i].Read()
 		if err != nil {
-			return nil, err
+			return
 		}
-		res[i].Content = data
-		res[i].Name = fmt.Sprintf("%s-%s", a.Name, a.Files[i].Path)
+		res = append(res, pipeline.File{
+			Name:    getFileName(stepName, files[i].Path),
+			Content: data,
+		})
 	}
 
-	return res, nil
+	return
 }
 
 type File struct {
@@ -75,7 +91,12 @@ type File struct {
 }
 
 func (f *File) Read() ([]byte, error) {
-	return ossClient.Get(context.Background(), f.OssPath)
+	data, err := ossClient.Get(context.Background(), f.OssPath)
+	if err != nil {
+		return nil, fmt.Errorf("path %s, err: %w", f.OssPath, err)
+	}
+
+	return data, nil
 }
 
 type Report struct {
@@ -98,4 +119,8 @@ type CaseResult struct {
 	ExitCode int
 	Time     float64
 	Memory   int
+}
+
+func getFileName(stepName, path string) string {
+	return fmt.Sprintf("%s-%s", stepName, path)
 }

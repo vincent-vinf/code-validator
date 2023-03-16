@@ -172,6 +172,7 @@ func AddBatch(batch *orm.Batch) (err error) {
 	if err != nil {
 		return
 	}
+	batch.ID = int(id)
 	stmt, err := tx.Prepare("insert into verification(batch_id, name, data) values (?,?,?)")
 	if err != nil {
 		return

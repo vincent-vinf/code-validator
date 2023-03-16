@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"mime/multipart"
@@ -10,12 +11,14 @@ import (
 	"os"
 	"path"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 	"github.com/vincent-vinf/go-jsend"
 
+	"github.com/vincent-vinf/code-validator/pkg/orm"
 	"github.com/vincent-vinf/code-validator/pkg/perform"
 	"github.com/vincent-vinf/code-validator/pkg/util"
 	"github.com/vincent-vinf/code-validator/pkg/util/config"
@@ -28,6 +31,7 @@ import (
 
 const (
 	defaultTmpDir         = "tmp"
+	defaultBatchDir       = "batch"
 	defaultCaseFileName   = "case.zip"
 	defaultUnzipDir       = "unzip-out"
 	defaultCaseInFileExt  = ".in"
@@ -119,16 +123,50 @@ func addBatch(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, jsend.SimpleErr(err.Error()))
 		}
 	}()
-	//batch := &orm.Batch{}
-	type T struct {
+	type Request struct {
+		Name          string
 		Verifications []*perform.Verification
 	}
-	batch := &T{}
-	if err = c.BindJSON(batch); err != nil {
+	req := &Request{}
+	if err = c.BindJSON(req); err != nil {
 		return
 	}
+
+	var vfs []*orm.Verification
+	for _, vf := range req.Verifications {
+		var data []byte
+		data, err = json.Marshal(vf)
+		if err != nil {
+			return
+		}
+		vfs = append(vfs, &orm.Verification{
+			Name: vf.Name,
+			Data: data,
+		})
+	}
+	t, _ := c.Get(jwtx.IdentityKey)
+	user := t.(*jwtx.TokenUserInfo)
+	batch := &orm.Batch{
+		Name:          req.Name,
+		UserID:        user.ID,
+		CreatedAt:     time.Now(),
+		Verifications: vfs,
+	}
+	log.Info(batch)
+	if err = db.AddBatch(batch); err != nil {
+		return
+	}
+	for _, vf := range req.Verifications {
+		err = moveRefFile(c, user.ID, batch.ID, vf)
+		if err != nil {
+			return
+		}
+	}
+
+	// test
 	var res []*perform.Report
-	for _, vf := range batch.Verifications {
+	for _, vf := range req.Verifications {
+		log.Info(vf.String())
 		var rep *perform.Report
 		rep, err = perform.Perform(vf, "t/in2out.py")
 		if err != nil {
@@ -140,6 +178,56 @@ func addBatch(c *gin.Context) {
 	c.JSON(http.StatusOK, jsend.Success(res))
 }
 
+func moveRefFile(ctx context.Context, uid, batchID int, vf *perform.Verification) error {
+	userTempDir := getUserTempDir(uid)
+	batchDir := getBatchDir(batchID)
+	if vf.Code != nil {
+		files, err := moveOssFiles(ctx, vf.Code.Files, userTempDir, batchDir)
+		if err != nil {
+			return err
+		}
+		vf.Code.Files = files
+		files, err = moveOssFiles(ctx, vf.Code.Init.Files, userTempDir, batchDir)
+		if err != nil {
+			return err
+		}
+		vf.Code.Init.Files = files
+		for i := range vf.Code.Cases {
+			files, err = moveOssFiles(ctx, []perform.File{vf.Code.Cases[i].In}, userTempDir, batchDir)
+			if err != nil {
+				return err
+			}
+			vf.Code.Cases[i].In = files[0]
+			files, err = moveOssFiles(ctx, []perform.File{vf.Code.Cases[i].Out}, userTempDir, batchDir)
+			if err != nil {
+				return err
+			}
+			vf.Code.Cases[i].Out = files[0]
+		}
+	} else if vf.Custom != nil {
+		files, err := moveOssFiles(ctx, vf.Custom.Files, userTempDir, batchDir)
+		if err != nil {
+			return err
+		}
+		vf.Custom.Files = files
+	}
+
+	return nil
+}
+func moveOssFiles(ctx context.Context, files []perform.File, src, dst string) ([]perform.File, error) {
+	var res []perform.File
+	for _, f := range files {
+		d := path.Join(dst, f.OssPath)
+		err := ossClient.Move(ctx, path.Join(src, f.OssPath), d)
+		if err != nil {
+			return nil, err
+		}
+		f.OssPath = d
+		res = append(res, f)
+	}
+
+	return res, nil
+}
 func uploadFile(c *gin.Context) {
 	t, _ := c.Get(jwtx.IdentityKey)
 	user := t.(*jwtx.TokenUserInfo)
@@ -197,7 +285,7 @@ func uploadCaseFile(c *gin.Context) {
 		return
 	}
 
-	res, err := putCasesFromDir(c, unzipDir, path.Join(getUserTempDir(user.ID), defaultCaseDir, uuidName))
+	res, err := putCasesFromDir(c, unzipDir, user.ID, path.Join(defaultCaseDir, uuidName))
 	if err != nil {
 		return
 	}
@@ -228,9 +316,7 @@ func uploadCase(c *gin.Context) {
 	if err = c.BindJSON(&cases); err != nil {
 		return
 	}
-
-	ossDir := path.Join(getUserTempDir(user.ID), defaultCaseDir, uuidName)
-	res, err := putCases(c, cases, ossDir)
+	res, err := putCases(c, cases, user.ID, path.Join(defaultCaseDir, uuidName))
 	if err != nil {
 		return
 	}
@@ -281,7 +367,11 @@ func getUserTempDir(uid int) string {
 	return path.Join(defaultTmpDir, strconv.Itoa(uid))
 }
 
-func putCasesFromDir(ctx context.Context, dir, ossDir string) (res []perform.TestCase, err error) {
+func getBatchDir(batchID int) string {
+	return path.Join(defaultBatchDir, strconv.Itoa(batchID))
+}
+
+func putCasesFromDir(ctx context.Context, dir string, uid int, ossDir string) (res []perform.TestCase, err error) {
 	files, err := os.ReadDir(dir)
 	if err != nil {
 		return
@@ -305,6 +395,7 @@ func putCasesFromDir(ctx context.Context, dir, ossDir string) (res []perform.Tes
 		}
 	}
 
+	userTempDir := getUserTempDir(uid)
 	for i := range files {
 		if files[i].IsDir() {
 			// ignore dir
@@ -320,10 +411,10 @@ func putCasesFromDir(ctx context.Context, dir, ossDir string) (res []perform.Tes
 			ossInPath := path.Join(ossDir, name)
 			ossOutPath := path.Join(ossDir, outName)
 
-			if err = putLocalTextFile(ctx, path.Join(dir, name), ossInPath); err != nil {
+			if err = putLocalTextFile(ctx, path.Join(dir, name), path.Join(userTempDir, ossInPath)); err != nil {
 				return
 			}
-			if err = putLocalTextFile(ctx, path.Join(dir, outName), ossOutPath); err != nil {
+			if err = putLocalTextFile(ctx, path.Join(dir, outName), path.Join(userTempDir, ossOutPath)); err != nil {
 				return
 			}
 			t := perform.TestCase{
@@ -342,15 +433,17 @@ func putCasesFromDir(ctx context.Context, dir, ossDir string) (res []perform.Tes
 	return
 }
 
-func putCases(ctx context.Context, cases []Case, ossDir string) (res []perform.TestCase, err error) {
+func putCases(ctx context.Context, cases []Case, uid int, ossDir string) (res []perform.TestCase, err error) {
+	userTempDir := getUserTempDir(uid)
+
 	for i := range cases {
 		ossInPath := path.Join(ossDir, cases[i].Name+defaultCaseInFileExt)
 		ossOutPath := path.Join(ossDir, cases[i].Name+defaultCaseOutFileExt)
 
-		if err = putTextFile(ctx, []byte(cases[i].In), ossInPath); err != nil {
+		if err = putTextFile(ctx, []byte(cases[i].Input), path.Join(userTempDir, ossInPath)); err != nil {
 			return
 		}
-		if err = putTextFile(ctx, []byte(cases[i].Out), ossOutPath); err != nil {
+		if err = putTextFile(ctx, []byte(cases[i].Output), path.Join(userTempDir, ossOutPath)); err != nil {
 			return
 		}
 
@@ -399,7 +492,7 @@ func newOrCheckUUID(uuidName string) (string, error) {
 }
 
 type Case struct {
-	Name string
-	In   string
-	Out  string
+	Name   string
+	Input  string
+	Output string
 }

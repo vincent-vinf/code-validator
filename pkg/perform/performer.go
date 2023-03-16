@@ -48,12 +48,36 @@ func Perform(vf *Verification, codePath string) (*Report, error) {
 
 func runCode(code *CodeVerification, codePath string) (*Report, error) {
 	var steps []pipeline.Step
+	var files []pipeline.File
 	if code.Init != nil {
 		code.Init.Name = InitStepName
 		steps = append(steps, *code.Init.ToStep())
+		fs, err := code.Init.GetFiles()
+		if err != nil {
+			return nil, err
+		}
+		files = append(files, fs...)
 	}
+
 	templates := GetCodeTemplates()
 	steps = append(steps, GetCodeSteps()...)
+	// get verify files
+	fs, err := ToPipelineFile(VerifyStepName, code.Files)
+	if err != nil {
+		return nil, err
+	}
+	files = append(files, fs...)
+	var verifyFileRefs []pipeline.FileRef
+	for i := range code.Files {
+		verifyFileRefs = append(verifyFileRefs, pipeline.FileRef{
+			DataRef: pipeline.DataRef{
+				ExternalRef: &pipeline.ExternalRef{
+					FileName: getFileName(VerifyStepName, code.Files[i].Path),
+				},
+			},
+			Path: code.Files[i].Path,
+		})
+	}
 	steps = append(steps, pipeline.Step{
 		Name: VerifyStepName,
 		InlineTemplate: &pipeline.Template{
@@ -65,7 +89,7 @@ func runCode(code *CodeVerification, codePath string) (*Report, error) {
 			},
 		},
 		ContinueOnFail: true,
-		FileRefs: []pipeline.FileRef{
+		FileRefs: append([]pipeline.FileRef{
 			{
 				DataRef: pipeline.DataRef{
 					ExternalRef: &pipeline.ExternalRef{FileName: "output"},
@@ -80,7 +104,7 @@ func runCode(code *CodeVerification, codePath string) (*Report, error) {
 				Path:       "./output",
 				AutoRemove: true,
 			},
-		},
+		}, verifyFileRefs...),
 	},
 	)
 
@@ -128,20 +152,20 @@ func runCode(code *CodeVerification, codePath string) (*Report, error) {
 		pl := &pipeline.Pipeline{
 			Steps:     steps,
 			Templates: templates,
-			Files: []pipeline.File{
-				{
+			Files: append(files,
+				pipeline.File{
 					Name:    "code",
 					Content: codeData,
 				},
-				{
+				pipeline.File{
 					Name:    "output",
 					Content: outData,
 				},
-				{
+				pipeline.File{
 					Name:    "input",
 					Content: inData,
 				},
-			},
+			),
 		}
 		res, err := execute(id, pl)
 		if err != nil {
@@ -254,11 +278,11 @@ func execute(id int, pl *pipeline.Pipeline) (res *pipeline.Result, err error) {
 	if err != nil {
 		return nil, err
 	}
-	defer func(executor *pipeline.Executor) {
-		if e := executor.Clean(); e != nil {
-			err = e
-		}
-	}(executor)
+	//defer func(executor *pipeline.Executor) {
+	//	if e := executor.Clean(); e != nil {
+	//		err = e
+	//	}
+	//}(executor)
 	res, err = executor.Exec(*pl)
 
 	return
