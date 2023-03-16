@@ -1,19 +1,22 @@
 FROM golang:1.19 as builder
-
 WORKDIR /app
-
 ADD . /app
 
-RUN mkdir -p "bin" && \
-    go build -o bin/access-service cmd/access/main.go && \
-    go build -o bin/spike-service cmd/spike/main.go && \
-    go build -o bin/user-service cmd/user/main.go && \
-    go build -o bin/admin-service cmd/admin/main.go && \
-    go build -o bin/order-service cmd/order/main.go
+RUN --mount=type=cache,target=/root/.cache/go-build go build -o bin/dispatcher-svc cmd/dispatcher/main.go && \
+    go build -o bin/result-svc cmd/result/main.go && \
+    go build -o bin/user-svc cmd/user/main.go
 
-# gcr.io/distroless/static
-# access
-FROM ubuntu as access
+FROM ubuntu as dispatcher
 WORKDIR /
-COPY --from=builder /app/bin/access-service /
+COPY --from=builder /app/bin/dispatcher-svc /usr/local/bin
+USER root
+
+FROM ubuntu as result
+WORKDIR /
+COPY --from=builder /app/bin/result-svc /usr/local/bin
+USER root
+
+FROM ubuntu as user
+WORKDIR /
+COPY --from=builder /app/bin/user-svc /usr/local/bin
 USER root

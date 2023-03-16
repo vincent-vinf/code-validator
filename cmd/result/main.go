@@ -2,8 +2,10 @@ package main
 
 import (
 	"flag"
+
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
+
 	"github.com/vincent-vinf/code-validator/pkg/util"
 	"github.com/vincent-vinf/code-validator/pkg/util/config"
 	"github.com/vincent-vinf/code-validator/pkg/util/db"
@@ -26,7 +28,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	db.Init(cfg)
+	db.Init(cfg.Mysql)
 	defer db.Close()
 
 	r := gin.New()

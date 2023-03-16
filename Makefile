@@ -5,17 +5,24 @@ REGISTRY = registry.cn-shanghai.aliyuncs.com/codev
 
 NAMESPACE=code-validator
 
-all_image: access_image
+all_image: dispatcher result user
 
 build_push: all_image push
 
-access_image:
-	docker build --target access -t $(REGISTRY)/spike-access-service:$(TAG) $(WORK_DIR)
+dispatcher:
+	docker build --target dispatcher -t $(REGISTRY)/dispatcher:$(TAG) -f ./dockerfile/code-validator.dockerfile $(WORK_DIR)
 
-js-executor:
-	docker build -t $(REGISTRY)/js-executor:$(TAG) -f ./dockerfile/js-executor.dockerfile $(WORK_DIR)
-python-executor:
-	docker build -t $(REGISTRY)/python-executor:$(TAG) -f ./dockerfile/python-executor.dockerfile $(WORK_DIR)
+result:
+	docker build --target result -t $(REGISTRY)/result:$(TAG) -f ./dockerfile/code-validator.dockerfile $(WORK_DIR)
+
+user:
+	docker build --target user -t $(REGISTRY)/user:$(TAG) -f ./dockerfile/code-validator.dockerfile $(WORK_DIR)
+
+js-actuator:
+	docker build -t $(REGISTRY)/js-actuator:$(TAG) -f ./dockerfile/js-actuator.dockerfile $(WORK_DIR)
+
+python-actuator:
+	docker build -t $(REGISTRY)/python-actuator:$(TAG) -f ./dockerfile/python-actuator.dockerfile $(WORK_DIR)
 
 push:
 	docker push $(REGISTRY)/spike-access-service:$(TAG)

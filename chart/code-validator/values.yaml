@@ -7,7 +7,7 @@ pullPolicy: Always
 microservices:
   - name: access-service
     replicaCount: 1
-    image: registry.cn-qingdao.aliyuncs.com/adpc/spike-access-service:latest
+    image: registry.cn-shanghai.aliyuncs.com/codev/spike-access-service:latest
     command:
       - /access-service
       - --rpc-port=8081
@@ -17,7 +17,7 @@ microservices:
 
   - name: admin-service
     replicaCount: 1
-    image: registry.cn-qingdao.aliyuncs.com/adpc/spike-admin-service:latest
+    image: registry.cn-shanghai.aliyuncs.com/codev/spike-admin-service:latest
     command:
       - /admin-service
       - --port=8080
@@ -27,7 +27,7 @@ microservices:
 
   - name: order-service
     replicaCount: 2
-    image: registry.cn-qingdao.aliyuncs.com/adpc/spike-order-service:latest
+    image: registry.cn-shanghai.aliyuncs.com/codev/spike-order-service:latest
     command:
       - /order-service
       - --port=8080
@@ -37,7 +37,7 @@ microservices:
 
   - name: spike-service
     replicaCount: 2
-    image: registry.cn-qingdao.aliyuncs.com/adpc/spike-spike-service:latest
+    image: registry.cn-shanghai.aliyuncs.com/codev/spike-spike-service:latest
     command:
       - /spike-service
       - --port=8080
@@ -48,9 +48,9 @@ microservices:
 
   - name: user-service
     replicaCount: 1
-    image: registry.cn-qingdao.aliyuncs.com/adpc/spike-user-service:latest
+    image: registry.cn-shanghai.aliyuncs.com/codev/user:latest
     command:
-      - /user-service
+      - /user-svc
       - --port=8080
       - --config-path=/configs/config.yaml
       - --access-endpoint=spike-access-service.default.svc:8081
