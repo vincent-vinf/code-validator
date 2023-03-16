@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
@@ -47,6 +48,24 @@ func main() {
 
 	router := r.Group("/result")
 	router.Use(authMiddleware.MiddlewareFunc())
+	router.GET("/:id", getResultByID)
+	router.GET("", getResultList)
 
 	util.WatchSignalGrace(r, *port)
+}
+
+func getResultByID(c *gin.Context) {
+	id := c.Param("id")
+	log.Info(id)
+}
+
+func getResultList(c *gin.Context) {
+	t, _ := c.Get(jwtx.IdentityKey)
+	user := t.(*jwtx.TokenUserInfo)
+	log.Info(user.ID)
+
+	batchID := c.Query("batch")
+	log.Info(batchID)
+
+	c.JSON(http.StatusOK, gin.H{"data": "2"})
 }

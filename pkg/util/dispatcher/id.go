@@ -36,6 +36,8 @@ func NewDispatcher(min, max int) (*Dispatcher, error) {
 }
 
 func (r *Dispatcher) Get() (int, error) {
+	r.lock.Lock()
+	defer r.lock.Unlock()
 	id, err := r.queue.Pop()
 	if err != nil {
 		return 0, err
@@ -46,6 +48,8 @@ func (r *Dispatcher) Get() (int, error) {
 }
 
 func (r *Dispatcher) Release(id int) error {
+	r.lock.Lock()
+	defer r.lock.Unlock()
 	if _, ok := r.idSet[id]; ok {
 		if err := r.queue.Push(id); err != nil {
 			return err

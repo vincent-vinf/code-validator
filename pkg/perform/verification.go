@@ -79,9 +79,9 @@ func (f *File) Read() ([]byte, error) {
 }
 
 type Report struct {
-	Pass    bool
-	Message string
-	Cases   []CaseResult
+	Pass    bool         `json:"pass"`
+	Message string       `json:"message,omitempty"`
+	Cases   []CaseResult `json:"cases,omitempty"`
 }
 
 type TestCase struct {

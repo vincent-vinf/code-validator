@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"path"
+	"time"
 
 	"github.com/vincent-vinf/code-validator/pkg/sandbox"
 )
@@ -119,14 +120,18 @@ func (e *Executor) Exec(pipeline Pipeline) (*Result, error) {
 			}
 		}
 
+		network := true
+		var timeout time.Duration
 		if step.Limit != nil {
-			// todo add limit
+			network = step.Limit.EnableNetWork
+			timeout = step.Limit.Time
 		}
 		var combinedOutBuf bytes.Buffer
 		cmdErr := e.box.Run(temp.Cmd, temp.Args,
-			sandbox.Network(true),
+			sandbox.Network(network),
 			sandbox.Stdin(bytes.NewReader(input)),
 			sandbox.Stdout(&combinedOutBuf),
+			sandbox.Time(timeout),
 			sandbox.Stderr(&combinedOutBuf),
 			sandbox.Metadata(meta),
 			sandbox.Env(map[string]string{

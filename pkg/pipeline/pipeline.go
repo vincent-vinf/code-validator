@@ -1,6 +1,8 @@
 package pipeline
 
 import (
+	"time"
+
 	"github.com/vincent-vinf/code-validator/pkg/sandbox"
 )
 
@@ -32,8 +34,7 @@ type Step struct {
 
 type Limit struct {
 	EnableNetWork bool
-	Memory        int
-	Time          float64
+	Time          time.Duration
 }
 
 type DataRef struct {

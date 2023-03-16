@@ -28,7 +28,7 @@ func BenchmarkParallel(b *testing.B) {
 			m.Store(id, struct{}{})
 			time.Sleep(time.Millisecond * 2)
 			m.Delete(id)
-			ring.Release(id)
+			_ = ring.Release(id)
 		}
 	})
 }

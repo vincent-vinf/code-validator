@@ -151,41 +151,39 @@ func GetTaskByID(id int) (*orm.Task, error) {
 	return nil, fmt.Errorf("the verification with id %d does not exist", id)
 }
 
-func AddBatch(batch *orm.Batch) error {
+func AddBatch(batch *orm.Batch) (err error) {
 	db := getInstance()
 	tx, err := db.Begin()
 	if err != nil {
 		return err
 	}
+	defer func() {
+		if err != nil {
+			err = tx.Rollback()
+		} else {
+			err = tx.Commit()
+		}
+	}()
 	r, err := tx.Exec("insert into batch(user_id, name, create_at) values (?,?,?)", batch.UserID, batch.Name, batch.CreatedAt)
 	if err != nil {
-		tx.Rollback()
-		return err
+		return
 	}
 	id, err := r.LastInsertId()
 	if err != nil {
-		tx.Rollback()
-		return err
+		return
 	}
 	stmt, err := tx.Prepare("insert into verification(batch_id, name, data) values (?,?,?)")
 	if err != nil {
-		tx.Rollback()
-		return err
+		return
 	}
 	for _, v := range batch.Verifications {
-		_, err := stmt.Exec(id, v.Name, v.Data)
+		_, err = stmt.Exec(id, v.Name, v.Data)
 		if err != nil {
-			tx.Rollback()
-			return err
+			return
 		}
 	}
 
-	if err = tx.Commit(); err != nil {
-		tx.Rollback()
-		return err
-	}
-
-	return nil
+	return
 }
 
 //func GetUserById(id string) (*orm.User, error) {

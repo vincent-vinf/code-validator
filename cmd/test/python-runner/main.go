@@ -104,6 +104,4 @@ func runPython(c *gin.Context) {
 	res.Output = string(output)
 
 	c.JSON(http.StatusOK, res)
-
-	return
 }
