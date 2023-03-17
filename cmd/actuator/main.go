@@ -3,7 +3,10 @@ package main
 import (
 	"encoding/json"
 	"flag"
+	"fmt"
+
 	"github.com/sirupsen/logrus"
+
 	"github.com/vincent-vinf/code-validator/pkg/orm"
 	"github.com/vincent-vinf/code-validator/pkg/perform"
 	"github.com/vincent-vinf/code-validator/pkg/util/config"
@@ -92,7 +95,7 @@ func subTaskHandle(req *SubTaskRequest) error {
 	if err = json.Unmarshal(vf.Data, v); err != nil {
 		return err
 	}
-	report, err := perform.Perform(v, task.Code)
+	report, err := perform.Perform(v, task.Code, fmt.Sprintf("task/%d/verification/%d", req.TaskID, req.VerificationID))
 	if err != nil {
 		return err
 	}

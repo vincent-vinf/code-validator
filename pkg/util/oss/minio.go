@@ -1,15 +1,22 @@
 package oss
 
 import (
+	"bytes"
 	"context"
 	"fmt"
-	"github.com/sirupsen/logrus"
 	"io"
+	"os"
+
+	"github.com/sirupsen/logrus"
 
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 
 	"github.com/vincent-vinf/code-validator/pkg/util/config"
+)
+
+const (
+	MIMEPlain = "text/plain"
 )
 
 type Client struct {
@@ -81,4 +88,22 @@ func (c *Client) Move(ctx context.Context, src, dst string) error {
 	}
 
 	return nil
+}
+
+func (c *Client) PutLocalTextFile(ctx context.Context, path, ossPath string) error {
+	file, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	fstat, err := file.Stat()
+	if err != nil {
+		return err
+	}
+	return c.Put(ctx, ossPath, file, fstat.Size(), MIMEPlain)
+}
+
+func (c *Client) PutTextFile(ctx context.Context, data []byte, ossPath string) error {
+	return c.Put(ctx, ossPath, bytes.NewReader(data), int64(len(data)), MIMEPlain)
 }

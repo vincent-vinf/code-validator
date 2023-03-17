@@ -76,7 +76,7 @@ func main() {
 	}
 	fmt.Println(string(data))
 	rep, err := perform.Perform(
-		vf, "t/in2out.py")
+		vf, "t/in2out.py", "")
 	if err != nil {
 		panic(err)
 	}

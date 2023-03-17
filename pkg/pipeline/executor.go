@@ -166,6 +166,10 @@ func (e *Executor) Clean() error {
 	return nil
 }
 
+func (e *Executor) StepOutDir() string {
+	return e.stepOutDir
+}
+
 func (e *Executor) readDataRef(ref DataRef, files map[string]*File) ([]byte, error) {
 	switch {
 	case ref.ExternalRef != nil:

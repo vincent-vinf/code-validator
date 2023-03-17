@@ -1,8 +1,11 @@
 package perform
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"os"
+	"path"
 	"strings"
 
 	"github.com/vincent-vinf/code-validator/pkg/pipeline"
@@ -32,21 +35,21 @@ func init() {
 	}
 }
 
-func Perform(vf *Verification, codePath string) (*Report, error) {
+func Perform(vf *Verification, codePath string, ossDir string) (*Report, error) {
 	if err := validate(vf); err != nil {
 		return nil, err
 	}
 	switch {
 	case vf.Code != nil:
-		return runCode(vf.Code, codePath)
+		return runCode(vf.Code, codePath, ossDir)
 	case vf.Custom != nil:
-		return runCustom(vf.Custom, codePath)
+		return runCustom(vf.Custom, codePath, ossDir)
 	default:
 		return nil, errors.New("verification name cannot be empty")
 	}
 }
 
-func runCode(code *CodeVerification, codePath string) (*Report, error) {
+func runCode(code *CodeVerification, codePath string, ossDir string) (*Report, error) {
 	var steps []pipeline.Step
 	var files []pipeline.File
 	if code.Init != nil {
@@ -167,7 +170,7 @@ func runCode(code *CodeVerification, codePath string) (*Report, error) {
 				},
 			),
 		}
-		res, err := execute(id, pl)
+		res, err := execute(id, pl, ossDir)
 		if err != nil {
 			return nil, err
 		}
@@ -191,7 +194,7 @@ func runCode(code *CodeVerification, codePath string) (*Report, error) {
 	return rep, nil
 }
 
-func runCustom(custom *CustomVerification, codePath string) (*Report, error) {
+func runCustom(custom *CustomVerification, codePath string, ossDir string) (*Report, error) {
 	rep := &Report{
 		Pass: true,
 	}
@@ -229,7 +232,7 @@ func runCustom(custom *CustomVerification, codePath string) (*Report, error) {
 		}),
 	}
 
-	res, err := execute(id, pl)
+	res, err := execute(id, pl, ossDir)
 	if err != nil {
 		return nil, err
 	}
@@ -273,7 +276,7 @@ func SetOssClient(c *oss.Client) {
 	ossClient = c
 }
 
-func execute(id int, pl *pipeline.Pipeline) (res *pipeline.Result, err error) {
+func execute(id int, pl *pipeline.Pipeline, ossDir string) (*pipeline.Result, error) {
 	executor, err := pipeline.NewExecutor(id)
 	if err != nil {
 		return nil, err
@@ -283,7 +286,32 @@ func execute(id int, pl *pipeline.Pipeline) (res *pipeline.Result, err error) {
 	//		err = e
 	//	}
 	//}(executor)
-	res, err = executor.Exec(*pl)
+	res, err := executor.Exec(*pl)
+	if err != nil {
+		return nil, err
+	}
 
-	return
+	if err = StepOutToOSS(executor.StepOutDir(), ossDir); err != nil {
+		return nil, err
+	}
+
+	return res, nil
+}
+
+func StepOutToOSS(localDir, ossDir string) error {
+	files, err := os.ReadDir(localDir)
+	if err != nil {
+		return err
+	}
+	for _, file := range files {
+		if file.IsDir() {
+			continue
+		}
+		name := file.Name()
+		if err = ossClient.PutLocalTextFile(context.Background(), path.Join(localDir, name), path.Join(ossDir, name)); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

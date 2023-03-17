@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"flag"
@@ -168,7 +167,7 @@ func addBatch(c *gin.Context) {
 	for _, vf := range req.Verifications {
 		log.Info(vf.String())
 		var rep *perform.Report
-		rep, err = perform.Perform(vf, "t/in2out.py")
+		rep, err = perform.Perform(vf, "t/in2out.py", "test")
 		if err != nil {
 			return
 		}
@@ -339,8 +338,6 @@ func addTaskOfBatch(c *gin.Context) {
 }
 
 func uploadFileToOSS(ctx context.Context, file *multipart.FileHeader, uid int) (name string, err error) {
-	log.Info("filename:", file.Filename)
-
 	contentType := defaultContentType
 	if len(file.Header["Content-Type"]) > 0 {
 		contentType = file.Header["Content-Type"][0]
@@ -411,10 +408,10 @@ func putCasesFromDir(ctx context.Context, dir string, uid int, ossDir string) (r
 			ossInPath := path.Join(ossDir, name)
 			ossOutPath := path.Join(ossDir, outName)
 
-			if err = putLocalTextFile(ctx, path.Join(dir, name), path.Join(userTempDir, ossInPath)); err != nil {
+			if err = ossClient.PutLocalTextFile(ctx, path.Join(dir, name), path.Join(userTempDir, ossInPath)); err != nil {
 				return
 			}
-			if err = putLocalTextFile(ctx, path.Join(dir, outName), path.Join(userTempDir, ossOutPath)); err != nil {
+			if err = ossClient.PutLocalTextFile(ctx, path.Join(dir, outName), path.Join(userTempDir, ossOutPath)); err != nil {
 				return
 			}
 			t := perform.TestCase{
@@ -440,10 +437,10 @@ func putCases(ctx context.Context, cases []Case, uid int, ossDir string) (res []
 		ossInPath := path.Join(ossDir, cases[i].Name+defaultCaseInFileExt)
 		ossOutPath := path.Join(ossDir, cases[i].Name+defaultCaseOutFileExt)
 
-		if err = putTextFile(ctx, []byte(cases[i].Input), path.Join(userTempDir, ossInPath)); err != nil {
+		if err = ossClient.PutTextFile(ctx, []byte(cases[i].Input), path.Join(userTempDir, ossInPath)); err != nil {
 			return
 		}
-		if err = putTextFile(ctx, []byte(cases[i].Output), path.Join(userTempDir, ossOutPath)); err != nil {
+		if err = ossClient.PutTextFile(ctx, []byte(cases[i].Output), path.Join(userTempDir, ossOutPath)); err != nil {
 			return
 		}
 
@@ -461,24 +458,6 @@ func putCases(ctx context.Context, cases []Case, uid int, ossDir string) (res []
 	}
 
 	return
-}
-
-func putLocalTextFile(ctx context.Context, path, ossPath string) error {
-	file, err := os.Open(path)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	fstat, err := file.Stat()
-	if err != nil {
-		return err
-	}
-	return ossClient.Put(ctx, ossPath, file, fstat.Size(), defaultContentType)
-}
-
-func putTextFile(ctx context.Context, data []byte, ossPath string) error {
-	return ossClient.Put(ctx, ossPath, bytes.NewReader(data), int64(len(data)), defaultContentType)
 }
 
 func newOrCheckUUID(uuidName string) (string, error) {
