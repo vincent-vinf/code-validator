@@ -87,9 +87,6 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// todo: for test
-	perform.SetOssClient(ossClient)
-
 	router := r.Group("/batch")
 	router.Use(authMiddleware.MiddlewareFunc())
 	router.GET("/:id", getBatchByID)
@@ -151,7 +148,6 @@ func addBatch(c *gin.Context) {
 		CreatedAt:     time.Now(),
 		Verifications: vfs,
 	}
-	log.Info(batch)
 	if err = db.AddBatch(batch); err != nil {
 		return
 	}
@@ -162,19 +158,9 @@ func addBatch(c *gin.Context) {
 		}
 	}
 
-	// test
-	var res []*perform.Report
-	for _, vf := range req.Verifications {
-		log.Info(vf.String())
-		var rep *perform.Report
-		rep, err = perform.Perform(vf, "t/in2out.py", "test")
-		if err != nil {
-			return
-		}
-		res = append(res, rep)
-	}
-
-	c.JSON(http.StatusOK, jsend.Success(res))
+	c.JSON(http.StatusOK, jsend.Success(map[string]any{
+		"batchID": batch.ID,
+	}))
 }
 
 func moveRefFile(ctx context.Context, uid, batchID int, vf *perform.Verification) error {

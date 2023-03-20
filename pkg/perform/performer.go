@@ -170,7 +170,7 @@ func runCode(code *CodeVerification, codePath string, ossDir string) (*Report, e
 				},
 			),
 		}
-		res, err := execute(id, pl, ossDir)
+		res, err := execute(id, pl, path.Join(ossDir, tc.Name))
 		if err != nil {
 			return nil, err
 		}
@@ -281,11 +281,11 @@ func execute(id int, pl *pipeline.Pipeline, ossDir string) (*pipeline.Result, er
 	if err != nil {
 		return nil, err
 	}
-	//defer func(executor *pipeline.Executor) {
-	//	if e := executor.Clean(); e != nil {
-	//		err = e
-	//	}
-	//}(executor)
+	defer func(executor *pipeline.Executor) {
+		if e := executor.Clean(); e != nil {
+			err = e
+		}
+	}(executor)
 	res, err := executor.Exec(*pl)
 	if err != nil {
 		return nil, err

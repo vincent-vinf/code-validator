@@ -187,6 +187,28 @@ func AddBatch(batch *orm.Batch) (err error) {
 	return
 }
 
+func GetBatchByID(id int) (*orm.Verification, error) {
+	db := getInstance()
+	rows, err := db.Query("select batch_id,name,data from verification where id = ?", id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	if rows.Next() {
+		v := &orm.Verification{
+			ID: id,
+		}
+		if err = rows.Scan(&v.BatchID, &v.Name, &v.Data); err != nil {
+			return nil, err
+		}
+
+		return v, nil
+	}
+
+	return nil, fmt.Errorf("the verification with id %d does not exist", id)
+}
+
 //func GetUserById(id string) (*orm.User, error) {
 //	db := getInstance()
 //	stmt, err := db.Prepare("select username,email,id_number,work_status,age from user where id = ?")
