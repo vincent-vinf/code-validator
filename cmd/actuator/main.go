@@ -9,6 +9,7 @@ import (
 
 	"github.com/vincent-vinf/code-validator/pkg/orm"
 	"github.com/vincent-vinf/code-validator/pkg/perform"
+	"github.com/vincent-vinf/code-validator/pkg/types"
 	"github.com/vincent-vinf/code-validator/pkg/util/config"
 	"github.com/vincent-vinf/code-validator/pkg/util/db"
 	"github.com/vincent-vinf/code-validator/pkg/util/mq"
@@ -40,7 +41,7 @@ func main() {
 }
 
 func dealQueue(cfg config.Config) error {
-	mqClient, err := mq.NewClient("python", cfg.RabbitMQ)
+	mqClient, err := mq.NewClient(perform.Runtime, cfg.RabbitMQ)
 	if err != nil {
 		return err
 	}
@@ -48,7 +49,7 @@ func dealQueue(cfg config.Config) error {
 
 	if err = mqClient.Consume(
 		func(data []byte) {
-			req := &SubTaskRequest{}
+			req := &types.SubTaskRequest{}
 			if err := json.Unmarshal(data, req); err != nil {
 				// Ignore abnormal json data
 				log.Warn(err)
@@ -68,11 +69,6 @@ func dealQueue(cfg config.Config) error {
 	return nil
 }
 
-type SubTaskRequest struct {
-	TaskID         int
-	VerificationID int
-}
-
 func getVerificationByID(id int) (*orm.Verification, error) {
 	return db.GetVerificationByID(id)
 }
@@ -81,7 +77,7 @@ func getTaskByID(id int) (*orm.Task, error) {
 	return db.GetTaskByID(id)
 }
 
-func subTaskHandle(req *SubTaskRequest) error {
+func subTaskHandle(req *types.SubTaskRequest) error {
 	vf, err := getVerificationByID(req.VerificationID)
 	if err != nil {
 		return err
@@ -99,9 +95,32 @@ func subTaskHandle(req *SubTaskRequest) error {
 	if err != nil {
 		return err
 	}
-
-	// todo insert report to db
 	log.Info(report)
+
+	subtask := &orm.SubTask{
+		TaskID:         task.ID,
+		VerificationID: vf.ID,
+	}
+	if report.Pass {
+		subtask.Result = types.TaskStatusSuccess
+	} else {
+		subtask.Result = types.TaskStatusFailed
+	}
+	if len(report.Cases) > 0 {
+		var passNum int
+		for _, c := range report.Cases {
+			if c.Pass {
+				passNum++
+			}
+		}
+		subtask.Message = fmt.Sprintf("%d/%d", passNum, len(report.Cases))
+	} else {
+		subtask.Message = report.Message
+	}
+
+	if err = db.AddSubTask(subtask); err != nil {
+		return err
+	}
 
 	return nil
 }

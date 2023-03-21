@@ -19,6 +19,7 @@ import (
 
 	"github.com/vincent-vinf/code-validator/pkg/orm"
 	"github.com/vincent-vinf/code-validator/pkg/perform"
+	"github.com/vincent-vinf/code-validator/pkg/types"
 	"github.com/vincent-vinf/code-validator/pkg/util"
 	"github.com/vincent-vinf/code-validator/pkg/util/config"
 	"github.com/vincent-vinf/code-validator/pkg/util/db"
@@ -29,8 +30,6 @@ import (
 )
 
 const (
-	defaultTmpDir         = "tmp"
-	defaultBatchDir       = "batch"
 	defaultCaseFileName   = "case.zip"
 	defaultUnzipDir       = "unzip-out"
 	defaultCaseInFileExt  = ".in"
@@ -87,6 +86,9 @@ func main() {
 		log.Fatal(err)
 	}
 
+	// todo: for test
+	perform.SetOssClient(ossClient)
+
 	router := r.Group("/batch")
 	router.Use(authMiddleware.MiddlewareFunc())
 	router.GET("/:id", getBatchByID)
@@ -97,15 +99,21 @@ func main() {
 	router.POST("/case", uploadCase)
 
 	router.GET("/task/:id", getTaskByID)
-	router.GET("/:id/task", getTaskByBatchID)
-	router.POST("/:id/task", addTaskOfBatch)
+	router.GET("/:id/task", getTasksByBatchID)
+	router.POST("/task", newTaskOfBatch)
 
 	util.WatchSignalGrace(r, *port)
 }
 
 func getBatchByID(c *gin.Context) {
-	id := c.Param("id")
-	log.Info(id)
+	idStr := c.Param("id")
+	id, _ := strconv.Atoi(idStr)
+	batch, err := db.GetBatchByIDWithVerifications(id)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, jsend.SimpleErr(err.Error()))
+		return
+	}
+	c.JSON(http.StatusOK, jsend.Success(batch))
 }
 
 func getBatchList(c *gin.Context) {
@@ -136,87 +144,45 @@ func addBatch(c *gin.Context) {
 			return
 		}
 		vfs = append(vfs, &orm.Verification{
-			Name: vf.Name,
-			Data: data,
+			Name:    vf.Name,
+			Runtime: vf.Runtime,
+			Data:    data,
 		})
 	}
-	t, _ := c.Get(jwtx.IdentityKey)
-	user := t.(*jwtx.TokenUserInfo)
+	userID := getUserIDFromReq(c)
 	batch := &orm.Batch{
 		Name:          req.Name,
-		UserID:        user.ID,
+		UserID:        userID,
 		CreatedAt:     time.Now(),
 		Verifications: vfs,
 	}
+	log.Info(batch)
 	if err = db.AddBatch(batch); err != nil {
 		return
 	}
 	for _, vf := range req.Verifications {
-		err = moveRefFile(c, user.ID, batch.ID, vf)
+		err = moveRefFile(c, userID, batch.ID, vf)
 		if err != nil {
 			return
 		}
 	}
 
-	c.JSON(http.StatusOK, jsend.Success(map[string]any{
-		"batchID": batch.ID,
-	}))
+	// test
+	//var res []*perform.Report
+	//for _, vf := range req.Verifications {
+	//	log.Info(vf.String())
+	//	var rep *perform.Report
+	//	rep, err = perform.Perform(vf, "t/in2out.py", "test")
+	//	if err != nil {
+	//		return
+	//	}
+	//	res = append(res, rep)
+	//}
+
+	c.JSON(http.StatusOK, jsend.Success(batch))
 }
 
-func moveRefFile(ctx context.Context, uid, batchID int, vf *perform.Verification) error {
-	userTempDir := getUserTempDir(uid)
-	batchDir := getBatchDir(batchID)
-	if vf.Code != nil {
-		files, err := moveOssFiles(ctx, vf.Code.Files, userTempDir, batchDir)
-		if err != nil {
-			return err
-		}
-		vf.Code.Files = files
-		files, err = moveOssFiles(ctx, vf.Code.Init.Files, userTempDir, batchDir)
-		if err != nil {
-			return err
-		}
-		vf.Code.Init.Files = files
-		for i := range vf.Code.Cases {
-			files, err = moveOssFiles(ctx, []perform.File{vf.Code.Cases[i].In}, userTempDir, batchDir)
-			if err != nil {
-				return err
-			}
-			vf.Code.Cases[i].In = files[0]
-			files, err = moveOssFiles(ctx, []perform.File{vf.Code.Cases[i].Out}, userTempDir, batchDir)
-			if err != nil {
-				return err
-			}
-			vf.Code.Cases[i].Out = files[0]
-		}
-	} else if vf.Custom != nil {
-		files, err := moveOssFiles(ctx, vf.Custom.Files, userTempDir, batchDir)
-		if err != nil {
-			return err
-		}
-		vf.Custom.Files = files
-	}
-
-	return nil
-}
-func moveOssFiles(ctx context.Context, files []perform.File, src, dst string) ([]perform.File, error) {
-	var res []perform.File
-	for _, f := range files {
-		d := path.Join(dst, f.OssPath)
-		err := ossClient.Move(ctx, path.Join(src, f.OssPath), d)
-		if err != nil {
-			return nil, err
-		}
-		f.OssPath = d
-		res = append(res, f)
-	}
-
-	return res, nil
-}
 func uploadFile(c *gin.Context) {
-	t, _ := c.Get(jwtx.IdentityKey)
-	user := t.(*jwtx.TokenUserInfo)
-
 	var err error
 	defer func() {
 		if err != nil {
@@ -228,7 +194,7 @@ func uploadFile(c *gin.Context) {
 	if err != nil {
 		return
 	}
-	uuidName, err := uploadFileToOSS(c, file, user.ID)
+	uuidName, err := uploadFileToOSS(c, file, getUserIDFromReq(c))
 	if err != nil {
 		return
 	}
@@ -236,9 +202,6 @@ func uploadFile(c *gin.Context) {
 }
 
 func uploadCaseFile(c *gin.Context) {
-	t, _ := c.Get(jwtx.IdentityKey)
-	user := t.(*jwtx.TokenUserInfo)
-
 	var err error
 	defer func() {
 		if err != nil {
@@ -270,7 +233,7 @@ func uploadCaseFile(c *gin.Context) {
 		return
 	}
 
-	res, err := putCasesFromDir(c, unzipDir, user.ID, path.Join(defaultCaseDir, uuidName))
+	res, err := putCasesFromDir(c, unzipDir, getUserIDFromReq(c), path.Join(defaultCaseDir, uuidName))
 	if err != nil {
 		return
 	}
@@ -282,9 +245,6 @@ func uploadCaseFile(c *gin.Context) {
 }
 
 func uploadCase(c *gin.Context) {
-	t, _ := c.Get(jwtx.IdentityKey)
-	user := t.(*jwtx.TokenUserInfo)
-
 	var err error
 	defer func() {
 		if err != nil {
@@ -301,7 +261,7 @@ func uploadCase(c *gin.Context) {
 	if err = c.BindJSON(&cases); err != nil {
 		return
 	}
-	res, err := putCases(c, cases, user.ID, path.Join(defaultCaseDir, uuidName))
+	res, err := putCases(c, cases, getUserIDFromReq(c), path.Join(defaultCaseDir, uuidName))
 	if err != nil {
 		return
 	}
@@ -315,12 +275,53 @@ func getTaskByID(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "2"})
 }
 
-func getTaskByBatchID(c *gin.Context) {
+func getTasksByBatchID(c *gin.Context) {
+
 	c.JSON(http.StatusOK, gin.H{"message": "2"})
 }
 
-func addTaskOfBatch(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{"message": "3"})
+type newTaskReq struct {
+	BatchID int    `json:"batchID"`
+	Code    string `json:"code"`
+}
+
+func newTaskOfBatch(c *gin.Context) {
+	req := &newTaskReq{}
+	if err := c.BindJSON(req); err != nil {
+		return
+	}
+	batch, err := db.GetBatchByIDWithVerifications(req.BatchID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, jsend.SimpleErr(err.Error()))
+		return
+	}
+	defer func() {
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, jsend.SimpleErr(err.Error()))
+		}
+	}()
+
+	task := &orm.Task{
+		UserID:    getUserIDFromReq(c),
+		BatchID:   batch.ID,
+		Status:    types.TaskStatusRunning,
+		Code:      oss.DefaultCodeFileName,
+		CreatedAt: time.Now(),
+	}
+	if err = db.AddTask(task); err != nil {
+		return
+	}
+
+	err = ossClient.PutTextFile(c, []byte(req.Code), oss.GetCodePath(task.ID))
+	if err != nil {
+		return
+	}
+
+	if err = dispatcherTask(task, batch); err != nil {
+		return
+	}
+
+	c.JSON(http.StatusOK, jsend.Success(task))
 }
 
 func uploadFileToOSS(ctx context.Context, file *multipart.FileHeader, uid int) (name string, err error) {
@@ -337,21 +338,13 @@ func uploadFileToOSS(ctx context.Context, file *multipart.FileHeader, uid int) (
 	}
 	defer fileData.Close()
 
-	err = ossClient.Put(ctx, path.Join(getUserTempDir(uid), uuidName),
+	err = ossClient.Put(ctx, path.Join(oss.GetUserTempDir(uid), uuidName),
 		fileData, file.Size, contentType)
 	if err != nil {
 		return "", err
 	}
 
 	return uuidName, nil
-}
-
-func getUserTempDir(uid int) string {
-	return path.Join(defaultTmpDir, strconv.Itoa(uid))
-}
-
-func getBatchDir(batchID int) string {
-	return path.Join(defaultBatchDir, strconv.Itoa(batchID))
 }
 
 func putCasesFromDir(ctx context.Context, dir string, uid int, ossDir string) (res []perform.TestCase, err error) {
@@ -378,7 +371,7 @@ func putCasesFromDir(ctx context.Context, dir string, uid int, ossDir string) (r
 		}
 	}
 
-	userTempDir := getUserTempDir(uid)
+	userTempDir := oss.GetUserTempDir(uid)
 	for i := range files {
 		if files[i].IsDir() {
 			// ignore dir
@@ -417,7 +410,7 @@ func putCasesFromDir(ctx context.Context, dir string, uid int, ossDir string) (r
 }
 
 func putCases(ctx context.Context, cases []Case, uid int, ossDir string) (res []perform.TestCase, err error) {
-	userTempDir := getUserTempDir(uid)
+	userTempDir := oss.GetUserTempDir(uid)
 
 	for i := range cases {
 		ossInPath := path.Join(ossDir, cases[i].Name+defaultCaseInFileExt)
@@ -460,4 +453,81 @@ type Case struct {
 	Name   string
 	Input  string
 	Output string
+}
+
+func moveRefFile(ctx context.Context, uid, batchID int, vf *perform.Verification) error {
+	userTempDir := oss.GetUserTempDir(uid)
+	batchDir := oss.GetBatchDir(batchID)
+	if vf.Code != nil {
+		files, err := moveOssFiles(ctx, vf.Code.Files, userTempDir, batchDir)
+		if err != nil {
+			return err
+		}
+		vf.Code.Files = files
+		files, err = moveOssFiles(ctx, vf.Code.Init.Files, userTempDir, batchDir)
+		if err != nil {
+			return err
+		}
+		vf.Code.Init.Files = files
+		for i := range vf.Code.Cases {
+			files, err = moveOssFiles(ctx, []perform.File{vf.Code.Cases[i].In}, userTempDir, batchDir)
+			if err != nil {
+				return err
+			}
+			vf.Code.Cases[i].In = files[0]
+			files, err = moveOssFiles(ctx, []perform.File{vf.Code.Cases[i].Out}, userTempDir, batchDir)
+			if err != nil {
+				return err
+			}
+			vf.Code.Cases[i].Out = files[0]
+		}
+	} else if vf.Custom != nil {
+		files, err := moveOssFiles(ctx, vf.Custom.Files, userTempDir, batchDir)
+		if err != nil {
+			return err
+		}
+		vf.Custom.Files = files
+	}
+
+	return nil
+}
+
+func moveOssFiles(ctx context.Context, files []perform.File, src, dst string) ([]perform.File, error) {
+	var res []perform.File
+	for _, f := range files {
+		d := path.Join(dst, f.OssPath)
+		err := ossClient.Move(ctx, path.Join(src, f.OssPath), d)
+		if err != nil {
+			return nil, err
+		}
+		f.OssPath = d
+		res = append(res, f)
+	}
+
+	return res, nil
+}
+
+func getUserIDFromReq(c *gin.Context) int {
+	t, _ := c.Get(jwtx.IdentityKey)
+	user := t.(*jwtx.TokenUserInfo)
+
+	return user.ID
+}
+
+func dispatcherTask(task *orm.Task, batch *orm.Batch) error {
+	for _, verification := range batch.Verifications {
+		req := &types.SubTaskRequest{
+			TaskID:         task.ID,
+			VerificationID: verification.ID,
+		}
+		data, err := json.Marshal(req)
+		if err != nil {
+			return err
+		}
+		if err = pubClient.Publish(verification.Runtime, data); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

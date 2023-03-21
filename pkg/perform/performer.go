@@ -9,14 +9,11 @@ import (
 	"strings"
 
 	"github.com/vincent-vinf/code-validator/pkg/pipeline"
-	"github.com/vincent-vinf/code-validator/pkg/types"
 	"github.com/vincent-vinf/code-validator/pkg/util/dispatcher"
 	"github.com/vincent-vinf/code-validator/pkg/util/oss"
 )
 
 const (
-	Runtime = types.PythonRuntime
-
 	InitStepName   = "init"
 	RunStepName    = "run"
 	VerifyStepName = "verify"

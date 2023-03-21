@@ -3,6 +3,7 @@ package types
 const (
 	JavaScriptRuntime = "Javascript"
 	PythonRuntime     = "Python"
+	GolangRuntime     = "Golang"
 	CPPRuntime        = "CPP"
 	CRuntime          = "C"
 )

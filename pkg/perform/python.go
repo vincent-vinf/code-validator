@@ -1,6 +1,13 @@
 package perform
 
-import "github.com/vincent-vinf/code-validator/pkg/pipeline"
+import (
+	"github.com/vincent-vinf/code-validator/pkg/pipeline"
+	"github.com/vincent-vinf/code-validator/pkg/types"
+)
+
+const (
+	Runtime = types.PythonRuntime
+)
 
 func GetCodeTemplates() []pipeline.Template {
 	return []pipeline.Template{
