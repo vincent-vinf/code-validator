@@ -170,6 +170,10 @@ func (e *Executor) StepOutDir() string {
 	return e.stepOutDir
 }
 
+func (e *Executor) ReadFile(path string) ([]byte, error) {
+	return e.box.ReadFile(path)
+}
+
 func (e *Executor) readDataRef(ref DataRef, files map[string]*File) ([]byte, error) {
 	switch {
 	case ref.ExternalRef != nil:

@@ -167,7 +167,7 @@ func runCode(code *CodeVerification, codePath string, ossDir string) (*Report, e
 				},
 			),
 		}
-		res, err := execute(id, pl, path.Join(ossDir, tc.Name))
+		res, _, _, err := execute(id, pl, path.Join(ossDir, tc.Name))
 		if err != nil {
 			return nil, err
 		}
@@ -229,7 +229,7 @@ func runCustom(custom *CustomVerification, codePath string, ossDir string) (*Rep
 		}),
 	}
 
-	res, err := execute(id, pl, ossDir)
+	res, msg, pass, err := execute(id, pl, ossDir)
 	if err != nil {
 		return nil, err
 	}
@@ -243,16 +243,10 @@ func runCustom(custom *CustomVerification, codePath string, ossDir string) (*Rep
 
 		return rep, nil
 	}
-	rep.Pass, rep.Message, err = readVerifyResult()
-	if err != nil {
-		return nil, err
-	}
+	rep.Pass = pass
+	rep.Message = msg
 
 	return rep, nil
-}
-
-func readVerifyResult() (pass bool, message string, err error) {
-	return true, "test msg", nil
 }
 
 func validate(vf *Verification) error {
@@ -273,26 +267,39 @@ func SetOssClient(c *oss.Client) {
 	ossClient = c
 }
 
-func execute(id int, pl *pipeline.Pipeline, ossDir string) (*pipeline.Result, error) {
+func execute(id int, pl *pipeline.Pipeline, ossDir string) (
+	res *pipeline.Result,
+	message string,
+	pass bool,
+	err error,
+) {
 	executor, err := pipeline.NewExecutor(id)
 	if err != nil {
-		return nil, err
+		return
 	}
 	defer func(executor *pipeline.Executor) {
 		if e := executor.Clean(); e != nil {
 			err = e
 		}
 	}(executor)
-	res, err := executor.Exec(*pl)
+	res, err = executor.Exec(*pl)
 	if err != nil {
-		return nil, err
+		return
 	}
 
 	if err = StepOutToOSS(executor.StepOutDir(), ossDir); err != nil {
-		return nil, err
+		return
+	}
+	if _, e := executor.ReadFile("pass"); e != nil {
+		pass = false
+	} else {
+		pass = true
 	}
 
-	return res, nil
+	file, _ := executor.ReadFile("message")
+	message = string(file)
+
+	return
 }
 
 func StepOutToOSS(localDir, ossDir string) error {

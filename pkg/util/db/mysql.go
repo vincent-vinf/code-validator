@@ -115,6 +115,9 @@ func GetBatchByIDWithVerifications(id int) (*orm.Batch, error) {
 	}
 	db := getInstance()
 	rows, err := db.Query("select id,name,runtime,data from verification where batch_id = ?", v.ID)
+	if err != nil {
+		return nil, err
+	}
 	for rows.Next() {
 		vf := &orm.Verification{
 			BatchID: v.ID,
