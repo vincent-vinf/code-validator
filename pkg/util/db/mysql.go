@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/vincent-vinf/code-validator/pkg/orm"
+	"github.com/vincent-vinf/code-validator/pkg/util"
+	"github.com/vincent-vinf/code-validator/pkg/vo"
 
 	_ "github.com/go-sql-driver/mysql"
 
@@ -26,6 +28,7 @@ func Init(config config.Mysql) {
 
 func getInstance() *sql.DB {
 	if db == nil {
+		util.LogStruct(cfg)
 		once.Do(func() {
 			source := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local", cfg.User, cfg.Passwd, cfg.Host, cfg.Port, cfg.Database)
 			var err error
@@ -107,6 +110,25 @@ func IsExistEmail(email string) (bool, error) {
 	return false, nil
 }
 
+func ListBatchWithUserName() ([]vo.Batch, error) {
+	db := getInstance()
+	rows, err := db.Query("SELECT b.id,u.id,u.username,b.name,b.runtime,b.info,b.create_at FROM batch b LEFT JOIN user u ON b.user_id = u.id")
+	if err != nil {
+		return nil, err
+	}
+	var res []vo.Batch
+	defer rows.Close()
+	for rows.Next() {
+		v := vo.Batch{}
+		if err = rows.Scan(&v.ID, &v.UserID, &v.Username, &v.Name, &v.Runtime, &v.Describe, &v.CreatedAt); err != nil {
+			return nil, err
+		}
+		res = append(res, v)
+	}
+
+	return res, nil
+}
+
 // GetBatchByIDWithVerifications with verifications
 func GetBatchByIDWithVerifications(id int) (*orm.Batch, error) {
 	v, err := GetBatchByID(id)
@@ -133,7 +155,7 @@ func GetBatchByIDWithVerifications(id int) (*orm.Batch, error) {
 
 func GetBatchByID(id int) (*orm.Batch, error) {
 	db := getInstance()
-	rows, err := db.Query("select user_id,name,create_at from batch where id = ?", id)
+	rows, err := db.Query("select user_id,name,runtime,info,create_at from batch where id = ?", id)
 	if err != nil {
 		return nil, err
 	}
@@ -142,7 +164,7 @@ func GetBatchByID(id int) (*orm.Batch, error) {
 		ID: id,
 	}
 	if rows.Next() {
-		if err = rows.Scan(&v.UserID, &v.Name, &v.CreatedAt); err != nil {
+		if err = rows.Scan(&v.UserID, &v.Name, &v.Runtime, &v.Describe, &v.CreatedAt); err != nil {
 			return nil, err
 		}
 	} else {
@@ -161,12 +183,12 @@ func AddBatch(batch *orm.Batch) (err error) {
 	}
 	defer func() {
 		if err != nil {
-			err = tx.Rollback()
+			_ = tx.Rollback()
 		} else {
 			err = tx.Commit()
 		}
 	}()
-	r, err := tx.Exec("insert into batch(user_id, name, create_at) values (?,?,?)", batch.UserID, batch.Name, batch.CreatedAt)
+	r, err := tx.Exec("insert into batch(user_id, name, runtime, info, create_at) values (?,?,?,?,?)", batch.UserID, batch.Name, batch.Runtime, batch.Describe, batch.CreatedAt)
 	if err != nil {
 		return
 	}
@@ -175,7 +197,7 @@ func AddBatch(batch *orm.Batch) (err error) {
 		return
 	}
 	batch.ID = int(id)
-	stmt, err := tx.Prepare("insert into verification(batch_id, name, runtime, data) values (?,?,?)")
+	stmt, err := tx.Prepare("insert into verification(batch_id, name, runtime, data) values (?,?,?,?)")
 	if err != nil {
 		return
 	}

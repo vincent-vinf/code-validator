@@ -7,13 +7,15 @@ type Verification struct {
 	BatchID int
 	Name    string
 	Runtime string
-	Data    []byte
+	Data    string
 }
 
 type Batch struct {
 	ID            int             `json:"id,omitempty"`
 	UserID        int             `json:"userID,omitempty"`
 	Name          string          `json:"name,omitempty"`
+	Describe      string          `json:"describe,omitempty"`
+	Runtime       string          `json:"runtime,omitempty"`
 	CreatedAt     time.Time       `json:"createdAt,omitempty"`
 	Verifications []*Verification `json:"verifications,omitempty"`
 }

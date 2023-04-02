@@ -117,7 +117,12 @@ func getBatchByID(c *gin.Context) {
 }
 
 func getBatchList(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{"data": "2"})
+	batch, err := db.ListBatchWithUserName()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, jsend.SimpleErr(err.Error()))
+		return
+	}
+	c.JSON(http.StatusOK, jsend.Success(batch))
 }
 
 func addBatch(c *gin.Context) {
@@ -129,6 +134,8 @@ func addBatch(c *gin.Context) {
 	}()
 	type Request struct {
 		Name          string
+		Describe      string
+		Runtime       string
 		Verifications []*perform.Verification
 	}
 	req := &Request{}
@@ -146,17 +153,18 @@ func addBatch(c *gin.Context) {
 		vfs = append(vfs, &orm.Verification{
 			Name:    vf.Name,
 			Runtime: vf.Runtime,
-			Data:    data,
+			Data:    string(data),
 		})
 	}
 	userID := getUserIDFromReq(c)
 	batch := &orm.Batch{
 		Name:          req.Name,
+		Describe:      req.Describe,
+		Runtime:       req.Runtime,
 		UserID:        userID,
 		CreatedAt:     time.Now(),
 		Verifications: vfs,
 	}
-	log.Info(batch)
 	if err = db.AddBatch(batch); err != nil {
 		return
 	}
@@ -166,6 +174,7 @@ func addBatch(c *gin.Context) {
 			return
 		}
 	}
+	util.LogStruct(batch)
 
 	// test
 	//var res []*perform.Report
