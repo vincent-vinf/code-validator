@@ -236,7 +236,7 @@ func GetVerificationByID(id int) (*orm.Verification, error) {
 // GetTaskByID with subtask
 func GetTaskByID(id int) (*orm.Task, error) {
 	db := getInstance()
-	rows, err := db.Query("select user_id,batch_id,code,status,create_at from task where id = ?", id)
+	rows, err := db.Query("select user_id,batch_id,code,create_at from task where id = ?", id)
 	if err != nil {
 		return nil, err
 	}
@@ -245,7 +245,7 @@ func GetTaskByID(id int) (*orm.Task, error) {
 		ID: id,
 	}
 	if rows.Next() {
-		if err = rows.Scan(&task.UserID, &task.BatchID, &task.Code, &task.Status, &task.CreatedAt); err != nil {
+		if err = rows.Scan(&task.UserID, &task.BatchID, &task.Code, &task.CreatedAt); err != nil {
 			return nil, err
 		}
 	} else {
@@ -268,14 +268,43 @@ func GetTaskByID(id int) (*orm.Task, error) {
 	return task, nil
 }
 
+func ListTasks(batchID, userID int) ([]vo.Task, error) {
+	db := getInstance()
+	var (
+		rows *sql.Rows
+		err  error
+	)
+	if batchID != 0 {
+		rows, err = db.Query("SELECT t.id,u.id,u.username,t.batch_id,t.code,t.status,t.create_at FROM task t LEFT JOIN user u ON t.user_id = u.id where t.batch_id = ?", batchID)
+	} else if userID != 0 {
+
+	} else {
+		rows, err = db.Query("SELECT t.id,u.id,u.username,t.batch_id,t.code,t.create_at FROM task t LEFT JOIN user u ON t.user_id = u.id where t.user_id = ?", userID)
+	}
+	if err != nil {
+		return nil, err
+	}
+	var res []vo.Task
+	defer rows.Close()
+	for rows.Next() {
+		v := vo.Task{}
+		if err = rows.Scan(&v.ID, &v.UserID, &v.Username, &v.BatchID, &v.Code, &v.CreatedAt); err != nil {
+			return nil, err
+		}
+		res = append(res, v)
+	}
+
+	return res, nil
+}
+
 func AddTask(task *orm.Task) (err error) {
 	db := getInstance()
-	stmt, err := db.Prepare("insert into task (user_id , batch_id, code, status, create_at) VALUES (?,?,?,?,?)")
+	stmt, err := db.Prepare("insert into task (user_id , batch_id, code, create_at) VALUES (?,?,?,?)")
 	if err != nil {
 		return err
 	}
 	defer stmt.Close()
-	res, err := stmt.Exec(task.UserID, task.BatchID, task.Code, task.Status, task.CreatedAt)
+	res, err := stmt.Exec(task.UserID, task.BatchID, task.Code, task.CreatedAt)
 	if err != nil {
 		return err
 	}

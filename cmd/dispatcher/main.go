@@ -313,7 +313,6 @@ func newTaskOfBatch(c *gin.Context) {
 	task := &orm.Task{
 		UserID:    getUserIDFromReq(c),
 		BatchID:   batch.ID,
-		Status:    types.TaskStatusRunning,
 		Code:      oss.DefaultCodeFileName,
 		CreatedAt: time.Now(),
 	}

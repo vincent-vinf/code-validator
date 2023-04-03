@@ -24,7 +24,6 @@ type Task struct {
 	ID        int
 	UserID    int
 	BatchID   int
-	Status    string
 	Code      string
 	CreatedAt time.Time
 	SubTasks  []*SubTask

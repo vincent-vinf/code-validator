@@ -88,7 +88,7 @@ func subTaskHandle(req *types.SubTaskRequest) error {
 	}
 
 	v := &perform.Verification{}
-	if err = json.Unmarshal(vf.Data, v); err != nil {
+	if err = json.Unmarshal([]byte(vf.Data), v); err != nil {
 		return err
 	}
 	report, err := perform.Perform(v, task.Code, fmt.Sprintf("task/%d/verification/%d", req.TaskID, req.VerificationID))
