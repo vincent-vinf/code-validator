@@ -2,8 +2,10 @@ package main
 
 import (
 	"flag"
+
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
+
 	"github.com/vincent-vinf/code-validator/pkg/util"
 	"github.com/vincent-vinf/code-validator/pkg/util/config"
 	"github.com/vincent-vinf/code-validator/pkg/util/db"
@@ -43,6 +45,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	r.GET("/metrics", util.PrometheusHandler())
 
 	router := r.Group("/user")
 	router.POST("/login", authMiddleware.LoginHandler)
