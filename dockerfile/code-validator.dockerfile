@@ -2,9 +2,9 @@ FROM golang:1.19 as builder
 WORKDIR /app
 ADD . /app
 
-RUN --mount=type=cache,target=/root/.cache/go-build go build -o bin/dispatcher-svc cmd/dispatcher/main.go && \
-    go build -o bin/result-svc cmd/result/main.go && \
-    go build -o bin/user-svc cmd/user/main.go
+RUN --mount=type=cache,target=/root/.cache/go-build go build -tags=python -o bin/dispatcher-svc cmd/dispatcher/main.go && \
+    go build -tags=python -o bin/result-svc cmd/result/main.go && \
+    go build -tags=python -o bin/user-svc cmd/user/main.go
 
 FROM ubuntu as dispatcher
 WORKDIR /

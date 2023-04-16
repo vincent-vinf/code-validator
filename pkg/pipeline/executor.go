@@ -146,7 +146,7 @@ func (e *Executor) Exec(pipeline Pipeline) (*Result, error) {
 			res.Errs[step.Name] = cmdErr
 
 			if !step.ContinueOnFail {
-				return res, cmdErr
+				return res, fmt.Errorf("%w, out: %s", cmdErr, combinedOutBuf.String())
 			}
 		}
 

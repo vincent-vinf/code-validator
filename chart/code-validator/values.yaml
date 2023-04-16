@@ -5,12 +5,11 @@
 pullPolicy: Always
 
 microservices:
-  - name: access-service
+  - name: dispatcher
     replicaCount: 1
-    image: registry.cn-shanghai.aliyuncs.com/codev/spike-access-service:latest
+    image: registry.cn-shanghai.aliyuncs.com/codev/dispatcher:latest
     command:
       - /access-service
-      - --rpc-port=8081
       - --config-path=/configs/config.yaml
     service:
       - 8081

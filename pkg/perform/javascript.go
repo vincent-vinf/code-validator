@@ -1,4 +1,4 @@
-//go:build python
+//go:build javascript
 
 package perform
 
@@ -8,16 +8,16 @@ import (
 )
 
 const (
-	Runtime = types.PythonRuntime
+	Runtime = types.JavaScriptRuntime
 )
 
 func GetCodeTemplates() []pipeline.Template {
 	return []pipeline.Template{
 		{
 			Name: RunStepName,
-			Cmd:  "/usr/local/bin/python",
+			Cmd:  "/usr/local/bin/node",
 			Args: []string{
-				"./main.py",
+				"./index.js",
 			},
 		},
 	}
@@ -37,7 +37,7 @@ func GetCodeSteps() []pipeline.Step {
 					DataRef: pipeline.DataRef{
 						ExternalRef: &pipeline.ExternalRef{FileName: "code"},
 					},
-					Path: "./main.py",
+					Path: "./index.js",
 				},
 			},
 		},

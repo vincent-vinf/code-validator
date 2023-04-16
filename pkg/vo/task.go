@@ -1,6 +1,8 @@
 package vo
 
-import "github.com/vincent-vinf/code-validator/pkg/orm"
+import (
+	"github.com/vincent-vinf/code-validator/pkg/orm"
+)
 
 type Batch struct {
 	orm.Batch
@@ -8,6 +10,15 @@ type Batch struct {
 }
 
 type Task struct {
+	Username  string `json:"username"`
+	BatchName string `json:"batchName"`
+	Runtime   string `json:"runtime"`
+
 	orm.Task
-	Username string `json:"username"`
+	SubTasks []*SubTask `json:"subTasks,omitempty"`
+}
+
+type SubTask struct {
+	orm.SubTask
+	VerificationName string `json:"verificationName"`
 }

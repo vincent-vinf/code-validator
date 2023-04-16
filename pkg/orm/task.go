@@ -21,19 +21,19 @@ type Batch struct {
 }
 
 type Task struct {
-	ID        int
-	UserID    int
-	BatchID   int
-	Code      string
-	CreatedAt time.Time
-	SubTasks  []*SubTask
+	ID        int        `json:"id,omitempty"`
+	UserID    int        `json:"userID,omitempty"`
+	BatchID   int        `json:"batchID,omitempty"`
+	CreatedAt time.Time  `json:"createdAt"`
+	SubTasks  []*SubTask `json:"subTasks,omitempty"`
 }
 
 type SubTask struct {
-	ID             int
-	TaskID         int
-	VerificationID int
-	Status         string
-	Result         string
-	Message        string
+	ID             int `json:"id,omitempty"`
+	TaskID         int `json:"taskID,omitempty"`
+	VerificationID int `json:"verificationID,omitempty"`
+	// todo status
+	Status  string `json:"status,omitempty"`
+	Result  string `json:"result"`
+	Message string `json:"message"`
 }

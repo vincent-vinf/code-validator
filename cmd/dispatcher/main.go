@@ -87,9 +87,6 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// todo: for test
-	perform.SetOssClient(ossClient)
-
 	router := r.Group("/batch")
 	router.Use(authMiddleware.MiddlewareFunc())
 	router.GET("/:id", getBatchByID)
@@ -99,8 +96,6 @@ func main() {
 	router.POST("/case/file", uploadCaseFile)
 	router.POST("/case", uploadCase)
 
-	router.GET("/task/:id", getTaskByID)
-	router.GET("/:id/task", getTasksByBatchID)
 	router.POST("/task", newTaskOfBatch)
 
 	util.WatchSignalGrace(r, *port)
@@ -281,15 +276,6 @@ func uploadCase(c *gin.Context) {
 	}))
 }
 
-func getTaskByID(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{"message": "2"})
-}
-
-func getTasksByBatchID(c *gin.Context) {
-
-	c.JSON(http.StatusOK, gin.H{"message": "2"})
-}
-
 type newTaskReq struct {
 	BatchID int    `json:"batchID"`
 	Code    string `json:"code"`
@@ -314,7 +300,6 @@ func newTaskOfBatch(c *gin.Context) {
 	task := &orm.Task{
 		UserID:    getUserIDFromReq(c),
 		BatchID:   batch.ID,
-		Code:      oss.DefaultCodeFileName,
 		CreatedAt: time.Now(),
 	}
 	if err = db.AddTask(task); err != nil {

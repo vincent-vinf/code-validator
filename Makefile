@@ -5,7 +5,7 @@ REGISTRY = registry.cn-shanghai.aliyuncs.com/codev
 
 NAMESPACE=code-validator
 
-all_image: dispatcher result user
+all_image: dispatcher result user js-actuator python-actuator
 
 build_push: all_image push
 

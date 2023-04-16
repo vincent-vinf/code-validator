@@ -107,6 +107,7 @@ docker run -it --rm --privileged -v C:\Users\85761\repo\code-validator\configs:/
 * dispatcher：8001
 * user：8002
 * result：8003
+* actuator：8004
 
 概念关系
 

@@ -32,27 +32,27 @@ func init() {
 	}
 }
 
-func Perform(vf *Verification, codePath string, ossDir string) (*Report, error) {
+func Perform(vf *Verification, codeOssPath string, srcDir, stepOutDir string) (*Report, error) {
 	if err := validate(vf); err != nil {
 		return nil, err
 	}
 	switch {
 	case vf.Code != nil:
-		return runCode(vf.Code, codePath, ossDir)
+		return runCode(vf.Code, codeOssPath, srcDir, stepOutDir)
 	case vf.Custom != nil:
-		return runCustom(vf.Custom, codePath, ossDir)
+		return runCustom(vf.Custom, codeOssPath, srcDir, stepOutDir)
 	default:
 		return nil, errors.New("verification name cannot be empty")
 	}
 }
 
-func runCode(code *CodeVerification, codePath string, ossDir string) (*Report, error) {
+func runCode(code *CodeVerification, codePath string, srcDir, stepOutDir string) (*Report, error) {
 	var steps []pipeline.Step
 	var files []pipeline.File
 	if code.Init != nil {
 		code.Init.Name = InitStepName
 		steps = append(steps, *code.Init.ToStep())
-		fs, err := code.Init.GetFiles()
+		fs, err := code.Init.GetFiles(srcDir)
 		if err != nil {
 			return nil, err
 		}
@@ -62,7 +62,7 @@ func runCode(code *CodeVerification, codePath string, ossDir string) (*Report, e
 	templates := GetCodeTemplates()
 	steps = append(steps, GetCodeSteps()...)
 	// get verify files
-	fs, err := ToPipelineFile(VerifyStepName, code.Files)
+	fs, err := ToPipelineFile(srcDir, VerifyStepName, code.Files)
 	if err != nil {
 		return nil, err
 	}
@@ -72,7 +72,7 @@ func runCode(code *CodeVerification, codePath string, ossDir string) (*Report, e
 		verifyFileRefs = append(verifyFileRefs, pipeline.FileRef{
 			DataRef: pipeline.DataRef{
 				ExternalRef: &pipeline.ExternalRef{
-					FileName: getFileName(VerifyStepName, code.Files[i].Path),
+					FileName: GetFileName(VerifyStepName, code.Files[i].Path),
 				},
 			},
 			Path: code.Files[i].Path,
@@ -112,13 +112,11 @@ func runCode(code *CodeVerification, codePath string, ossDir string) (*Report, e
 		Pass:  true,
 		Cases: nil,
 	}
-	codeFile := File{
-		OssPath: codePath,
-	}
-	codeData, err := codeFile.Read()
+
+	codeData, err := ReadOSSFile(codePath)
 	if err != nil {
 		rep.Pass = false
-		rep.Message = fmt.Sprintf("failed to get code file, err: %s", err)
+		rep.Message = fmt.Sprintf("failed to get code file, path: %s, err: %s", codePath, err)
 
 		return rep, nil
 	}
@@ -136,14 +134,14 @@ func runCode(code *CodeVerification, codePath string, ossDir string) (*Report, e
 			Pass: false,
 		}
 
-		inData, err := tc.In.Read()
+		inData, err := ReadOSSFile(path.Join(srcDir, tc.In.OssPath))
 		if err != nil {
 			// Failed to read file, skip test case
 			cr.Message = err.Error()
 			rep.Cases = append(rep.Cases, cr)
 			continue
 		}
-		outData, err := tc.Out.Read()
+		outData, err := ReadOSSFile(path.Join(srcDir, tc.Out.OssPath))
 		if err != nil {
 			cr.Message = err.Error()
 			rep.Cases = append(rep.Cases, cr)
@@ -167,7 +165,7 @@ func runCode(code *CodeVerification, codePath string, ossDir string) (*Report, e
 				},
 			),
 		}
-		res, _, _, err := execute(id, pl, path.Join(ossDir, tc.Name))
+		res, _, _, err := execute(id, pl, path.Join(stepOutDir, tc.Name))
 		if err != nil {
 			return nil, err
 		}
@@ -191,17 +189,15 @@ func runCode(code *CodeVerification, codePath string, ossDir string) (*Report, e
 	return rep, nil
 }
 
-func runCustom(custom *CustomVerification, codePath string, ossDir string) (*Report, error) {
+func runCustom(custom *CustomVerification, codePath string, srcDir, stepOutDir string) (*Report, error) {
 	rep := &Report{
 		Pass: true,
 	}
-	codeFile := File{
-		OssPath: codePath,
-	}
-	codeData, err := codeFile.Read()
+
+	codeData, err := ReadOSSFile(codePath)
 	if err != nil {
 		rep.Pass = false
-		rep.Message = fmt.Sprintf("failed to get code file, err: %s", err)
+		rep.Message = fmt.Sprintf("failed to get code file, path:%s, err: %s", codePath, err)
 
 		return rep, nil
 	}
@@ -214,7 +210,7 @@ func runCustom(custom *CustomVerification, codePath string, ossDir string) (*Rep
 	}
 	defer idDispatcher.Release(id)
 
-	files, err := custom.Action.GetFiles()
+	files, err := custom.Action.GetFiles(srcDir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get action files, err: %w", err)
 	}
@@ -229,7 +225,7 @@ func runCustom(custom *CustomVerification, codePath string, ossDir string) (*Rep
 		}),
 	}
 
-	res, msg, pass, err := execute(id, pl, ossDir)
+	res, msg, pass, err := execute(id, pl, stepOutDir)
 	if err != nil {
 		return nil, err
 	}
@@ -267,7 +263,7 @@ func SetOssClient(c *oss.Client) {
 	ossClient = c
 }
 
-func execute(id int, pl *pipeline.Pipeline, ossDir string) (
+func execute(id int, pl *pipeline.Pipeline, stepOutDir string) (
 	res *pipeline.Result,
 	message string,
 	pass bool,
@@ -287,13 +283,13 @@ func execute(id int, pl *pipeline.Pipeline, ossDir string) (
 		return
 	}
 
-	if err = StepOutToOSS(executor.StepOutDir(), ossDir); err != nil {
+	if err = StepOutToOSS(executor.StepOutDir(), stepOutDir); err != nil {
 		return
 	}
-	if _, e := executor.ReadFile("pass"); e != nil {
-		pass = false
-	} else {
+	if data, e := executor.ReadFile("pass"); e == nil && strings.TrimSpace(string(data)) == "true" {
 		pass = true
+	} else {
+		pass = false
 	}
 
 	file, _ := executor.ReadFile("message")

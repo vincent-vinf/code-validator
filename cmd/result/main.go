@@ -3,9 +3,11 @@ package main
 import (
 	"flag"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
+	"github.com/vincent-vinf/go-jsend"
 
 	"github.com/vincent-vinf/code-validator/pkg/util"
 	"github.com/vincent-vinf/code-validator/pkg/util/config"
@@ -36,6 +38,7 @@ func main() {
 	//gin.SetMode(gin.ReleaseMode)
 	r.Use(gin.Logger())
 	r.Use(gin.Recovery())
+	r.Use(util.Cors())
 
 	r.NoRoute(func(c *gin.Context) {
 		c.JSON(404, gin.H{"message": "Page not found"})
@@ -49,15 +52,20 @@ func main() {
 
 	router := r.Group("/result")
 	router.Use(authMiddleware.MiddlewareFunc())
-	router.GET("/:id", getResultByID)
+	router.GET("/:id", getTaskDetailByID)
 	router.GET("", getResultList)
 
 	util.WatchSignalGrace(r, *port)
 }
 
-func getResultByID(c *gin.Context) {
-	id := c.Param("id")
-	log.Info(id)
+func getTaskDetailByID(c *gin.Context) {
+	id, _ := strconv.Atoi(c.Param("id"))
+	task, err := db.GetTaskInfoByID(id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, jsend.SimpleErr(err.Error()))
+		return
+	}
+	c.JSON(http.StatusOK, jsend.Success(task))
 }
 
 func getResultList(c *gin.Context) {
@@ -65,8 +73,11 @@ func getResultList(c *gin.Context) {
 	user := t.(*jwtx.TokenUserInfo)
 	log.Info(user.ID)
 
-	batchID := c.Query("batch")
-	log.Info(batchID)
-
-	c.JSON(http.StatusOK, gin.H{"data": "2"})
+	batchID, _ := strconv.Atoi(c.Query("batch"))
+	tasks, err := db.ListTasks(batchID, user.ID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, jsend.SimpleErr(err.Error()))
+		return
+	}
+	c.JSON(http.StatusOK, jsend.Success(tasks))
 }

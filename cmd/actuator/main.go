@@ -10,6 +10,7 @@ import (
 	"github.com/vincent-vinf/code-validator/pkg/orm"
 	"github.com/vincent-vinf/code-validator/pkg/perform"
 	"github.com/vincent-vinf/code-validator/pkg/types"
+	"github.com/vincent-vinf/code-validator/pkg/util"
 	"github.com/vincent-vinf/code-validator/pkg/util/config"
 	"github.com/vincent-vinf/code-validator/pkg/util/db"
 	"github.com/vincent-vinf/code-validator/pkg/util/mq"
@@ -46,7 +47,7 @@ func dealQueue(cfg config.Config) error {
 		return err
 	}
 	defer mqClient.Close()
-
+	log.Info("start deal queue")
 	if err = mqClient.Consume(
 		func(data []byte) {
 			req := &types.SubTaskRequest{}
@@ -91,16 +92,32 @@ func subTaskHandle(req *types.SubTaskRequest) error {
 	if err = json.Unmarshal([]byte(vf.Data), v); err != nil {
 		return err
 	}
-	report, err := perform.Perform(v, task.Code, fmt.Sprintf("task/%d/verification/%d", req.TaskID, req.VerificationID))
-	if err != nil {
-		return err
-	}
-	log.Info(report)
 
 	subtask := &orm.SubTask{
 		TaskID:         task.ID,
 		VerificationID: vf.ID,
+		Status:         types.TaskStatusRunning,
 	}
+	if err = db.AddSubTask(subtask); err != nil {
+		return err
+	}
+	defer func() {
+		subtask.Status = types.TaskStatusFinish
+		_ = db.UpdateSubTask(subtask)
+	}()
+
+	report, err := perform.Perform(v,
+		oss.GetCodePath(req.TaskID),
+		oss.GetBatchDir(task.BatchID),
+		oss.GetVerificationDir(req.TaskID, req.VerificationID),
+	)
+	if err != nil {
+		subtask.Result = types.TaskStatusFailed
+		subtask.Message = err.Error()
+		return nil
+	}
+	util.LogStruct(report)
+
 	if report.Pass {
 		subtask.Result = types.TaskStatusSuccess
 	} else {
@@ -108,6 +125,7 @@ func subTaskHandle(req *types.SubTaskRequest) error {
 	}
 	if len(report.Cases) > 0 {
 		var passNum int
+		util.LogStruct(report.Cases)
 		for _, c := range report.Cases {
 			if c.Pass {
 				passNum++
@@ -116,10 +134,6 @@ func subTaskHandle(req *types.SubTaskRequest) error {
 		subtask.Message = fmt.Sprintf("%d/%d", passNum, len(report.Cases))
 	} else {
 		subtask.Message = report.Message
-	}
-
-	if err = db.AddSubTask(subtask); err != nil {
-		return err
 	}
 
 	return nil

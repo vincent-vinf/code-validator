@@ -3,8 +3,7 @@ package perform
 import (
 	"context"
 	"fmt"
-
-	"gopkg.in/yaml.v3"
+	"path"
 
 	"github.com/vincent-vinf/code-validator/pkg/pipeline"
 )
@@ -14,14 +13,6 @@ type Verification struct {
 	Runtime string              `json:"runtime"`
 	Code    *CodeVerification   `json:"code,omitempty"`
 	Custom  *CustomVerification `json:"custom,omitempty"`
-}
-
-func (vf Verification) String() string {
-	data, err := yaml.Marshal(vf)
-	if err != nil {
-		return fmt.Sprintf("yaml marshal err: %s", err)
-	}
-	return string(data)
 }
 
 type CodeVerification struct {
@@ -46,7 +37,7 @@ func (a *Action) ToStep() *pipeline.Step {
 	for i := range a.Files {
 		fileRefs[i].Path = a.Files[i].Path
 		fileRefs[i].DataRef.ExternalRef = &pipeline.ExternalRef{
-			FileName: getFileName(a.Name, a.Files[i].Path),
+			FileName: GetFileName(a.Name, a.Files[i].Path),
 		}
 	}
 	return &pipeline.Step{
@@ -64,19 +55,19 @@ func (a *Action) ToStep() *pipeline.Step {
 	}
 }
 
-func (a *Action) GetFiles() ([]pipeline.File, error) {
-	return ToPipelineFile(a.Name, a.Files)
+func (a *Action) GetFiles(srcDir string) ([]pipeline.File, error) {
+	return ToPipelineFile(srcDir, a.Name, a.Files)
 }
 
-func ToPipelineFile(stepName string, files []File) (res []pipeline.File, err error) {
+func ToPipelineFile(srcDir, stepName string, files []File) (res []pipeline.File, err error) {
 	var data []byte
 	for i := range files {
-		data, err = files[i].Read()
+		data, err = ReadOSSFile(path.Join(srcDir, files[i].OssPath))
 		if err != nil {
 			return
 		}
 		res = append(res, pipeline.File{
-			Name:    getFileName(stepName, files[i].Path),
+			Name:    GetFileName(stepName, files[i].Path),
 			Content: data,
 		})
 	}
@@ -90,10 +81,10 @@ type File struct {
 	OssPath string `json:"ossPath,omitempty"`
 }
 
-func (f *File) Read() ([]byte, error) {
-	data, err := ossClient.Get(context.Background(), f.OssPath)
+func ReadOSSFile(path string) ([]byte, error) {
+	data, err := ossClient.Get(context.Background(), path)
 	if err != nil {
-		return nil, fmt.Errorf("path %s, err: %w", f.OssPath, err)
+		return nil, fmt.Errorf("path %s, err: %w", path, err)
 	}
 
 	return data, nil
@@ -121,6 +112,6 @@ type CaseResult struct {
 	Memory   int
 }
 
-func getFileName(stepName, path string) string {
+func GetFileName(stepName, path string) string {
 	return fmt.Sprintf("%s-%s", stepName, path)
 }

@@ -2,6 +2,7 @@ package types
 
 const (
 	TaskStatusRunning = "running"
+	TaskStatusFinish  = "finish"
 	TaskStatusSuccess = "success"
 	TaskStatusFailed  = "failed"
 )

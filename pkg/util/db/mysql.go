@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/vincent-vinf/code-validator/pkg/orm"
-	"github.com/vincent-vinf/code-validator/pkg/util"
 	"github.com/vincent-vinf/code-validator/pkg/vo"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -28,7 +27,6 @@ func Init(config config.Mysql) {
 
 func getInstance() *sql.DB {
 	if db == nil {
-		util.LogStruct(cfg)
 		once.Do(func() {
 			source := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local", cfg.User, cfg.Passwd, cfg.Host, cfg.Port, cfg.Database)
 			var err error
@@ -233,10 +231,9 @@ func GetVerificationByID(id int) (*orm.Verification, error) {
 	return nil, fmt.Errorf("the verification with id %d does not exist", id)
 }
 
-// GetTaskByID with subtask
 func GetTaskByID(id int) (*orm.Task, error) {
 	db := getInstance()
-	rows, err := db.Query("select user_id,batch_id,code,create_at from task where id = ?", id)
+	rows, err := db.Query("select user_id,batch_id,create_at from task where id = ?", id)
 	if err != nil {
 		return nil, err
 	}
@@ -245,21 +242,41 @@ func GetTaskByID(id int) (*orm.Task, error) {
 		ID: id,
 	}
 	if rows.Next() {
-		if err = rows.Scan(&task.UserID, &task.BatchID, &task.Code, &task.CreatedAt); err != nil {
+		if err = rows.Scan(&task.UserID, &task.BatchID, &task.CreatedAt); err != nil {
 			return nil, err
 		}
 	} else {
 		return nil, fmt.Errorf("the task with id %d does not exist", id)
 	}
-	rows, err = db.Query("select id,verification_id,status,result,message from subtask where task_id = ?", id)
+
+	return task, nil
+}
+
+// GetTaskInfoByID with subtask
+func GetTaskInfoByID(id int) (*vo.Task, error) {
+	db := getInstance()
+	rows, err := db.Query("SELECT u.id,u.username,t.batch_id,b.`name`,b.runtime,t.create_at FROM task t LEFT JOIN user u ON t.user_id = u.id LEFT JOIN batch b ON t.batch_id = b.id where t.id = ?", id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	task := &vo.Task{}
+	task.ID = id
+	if rows.Next() {
+		if err = rows.Scan(&task.UserID, &task.Username, &task.BatchID, &task.BatchName, &task.Runtime, &task.CreatedAt); err != nil {
+			return nil, err
+		}
+	} else {
+		return nil, fmt.Errorf("the task with id %d does not exist", id)
+	}
+	rows, err = db.Query("select subtask.id,verification_id,v.`name`,status,result,message from subtask LEFT JOIN verification v ON v.id = verification_id where task_id = ?", id)
 	if err != nil {
 		return nil, err
 	}
 	for rows.Next() {
-		s := &orm.SubTask{
-			TaskID: task.ID,
-		}
-		if err = rows.Scan(&s.ID, &s.VerificationID, &s.Status, &s.Result, &s.Message); err != nil {
+		s := &vo.SubTask{}
+		s.TaskID = task.ID
+		if err = rows.Scan(&s.ID, &s.VerificationID, &s.VerificationName, &s.Status, &s.Result, &s.Message); err != nil {
 			return nil, err
 		}
 		task.SubTasks = append(task.SubTasks, s)
@@ -275,11 +292,9 @@ func ListTasks(batchID, userID int) ([]vo.Task, error) {
 		err  error
 	)
 	if batchID != 0 {
-		rows, err = db.Query("SELECT t.id,u.id,u.username,t.batch_id,t.code,t.status,t.create_at FROM task t LEFT JOIN user u ON t.user_id = u.id where t.batch_id = ?", batchID)
-	} else if userID != 0 {
-
+		rows, err = db.Query("SELECT t.id,u.id,u.username,t.batch_id,b.`name`,b.runtime,t.create_at FROM task t LEFT JOIN user u ON t.user_id = u.id LEFT JOIN batch b ON t.batch_id = b.id where t.batch_id = ?", batchID)
 	} else {
-		rows, err = db.Query("SELECT t.id,u.id,u.username,t.batch_id,t.code,t.create_at FROM task t LEFT JOIN user u ON t.user_id = u.id where t.user_id = ?", userID)
+		rows, err = db.Query("SELECT t.id,u.id,u.username,t.batch_id,b.`name`,b.runtime,t.create_at FROM task t LEFT JOIN user u ON t.user_id = u.id LEFT JOIN batch b ON t.batch_id = b.id where t.user_id = ?", userID)
 	}
 	if err != nil {
 		return nil, err
@@ -288,7 +303,7 @@ func ListTasks(batchID, userID int) ([]vo.Task, error) {
 	defer rows.Close()
 	for rows.Next() {
 		v := vo.Task{}
-		if err = rows.Scan(&v.ID, &v.UserID, &v.Username, &v.BatchID, &v.Code, &v.CreatedAt); err != nil {
+		if err = rows.Scan(&v.ID, &v.UserID, &v.Username, &v.BatchID, &v.BatchName, &v.Runtime, &v.CreatedAt); err != nil {
 			return nil, err
 		}
 		res = append(res, v)
@@ -299,12 +314,12 @@ func ListTasks(batchID, userID int) ([]vo.Task, error) {
 
 func AddTask(task *orm.Task) (err error) {
 	db := getInstance()
-	stmt, err := db.Prepare("insert into task (user_id , batch_id, code, create_at) VALUES (?,?,?,?)")
+	stmt, err := db.Prepare("insert into task (user_id , batch_id, create_at) VALUES (?,?,?)")
 	if err != nil {
 		return err
 	}
 	defer stmt.Close()
-	res, err := stmt.Exec(task.UserID, task.BatchID, task.Code, task.CreatedAt)
+	res, err := stmt.Exec(task.UserID, task.BatchID, task.CreatedAt)
 	if err != nil {
 		return err
 	}
@@ -333,6 +348,21 @@ func AddSubTask(subtask *orm.SubTask) (err error) {
 		return err
 	}
 	subtask.ID = int(id)
+
+	return
+}
+
+func UpdateSubTask(subtask *orm.SubTask) (err error) {
+	db := getInstance()
+	stmt, err := db.Prepare("UPDATE subtask SET status = ?, result = ?, message = ?  WHERE id = ?")
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+	_, err = stmt.Exec(subtask.Status, subtask.Result, subtask.Message, subtask.ID)
+	if err != nil {
+		return err
+	}
 
 	return
 }
