@@ -87,7 +87,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	router := r.Group("/batch")
+	router := r.Group(util.WithGlobalAPIPrefix("/batch"))
 	router.Use(authMiddleware.MiddlewareFunc())
 	router.GET("/:id", getBatchByID)
 	router.GET("", getBatchList)

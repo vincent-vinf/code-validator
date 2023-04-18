@@ -1,5 +1,5 @@
 #TAG = test-$(shell git log -1 --format=%h)
-TAG = 0.0.1
+TAG = latest
 WORK_DIR = .
 REGISTRY = registry.cn-shanghai.aliyuncs.com/codev
 
@@ -25,10 +25,14 @@ python-actuator:
 	docker build -t $(REGISTRY)/python-actuator:$(TAG) -f ./dockerfile/python-actuator.dockerfile $(WORK_DIR)
 
 push:
-	docker push $(REGISTRY)/spike-access-service:$(TAG)
+	docker push $(REGISTRY)/dispatcher:$(TAG)
+	docker push $(REGISTRY)/result:$(TAG)
+	docker push $(REGISTRY)/user:$(TAG)
+	docker push $(REGISTRY)/js-actuator:$(TAG)
+	docker push $(REGISTRY)/python-actuator:$(TAG)
 
 tar_chart:
-	tar -zcvf spike-chart-$(TAG).tar.gz -C ./helm .
+	tar -zcvf code-chart-$(TAG).tar.gz -C ./chart/code-validator .
 
 dependencies_install:
 	helm repo add bitnami https://charts.bitnami.com/bitnami

@@ -50,7 +50,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	router := r.Group("/result")
+	router := r.Group(util.WithGlobalAPIPrefix("/result"))
 	router.Use(authMiddleware.MiddlewareFunc())
 	router.GET("/:id", getTaskDetailByID)
 	router.GET("", getResultList)

@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"net/http"
 
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
 
 	"github.com/vincent-vinf/code-validator/pkg/orm"
@@ -19,8 +21,13 @@ import (
 
 var (
 	configPath = flag.String("config-path", "configs/config.yaml", "")
+	port       = flag.Int("port", 8001, "")
 	log        = logrus.New()
 )
+
+func init() {
+	flag.Parse()
+}
 
 // 缓存Verification
 func main() {
@@ -35,6 +42,14 @@ func main() {
 		log.Fatal(err)
 	}
 	perform.SetOssClient(ossClient)
+
+	http.Handle("/metrics", promhttp.Handler())
+	go func() {
+		err := http.ListenAndServe(fmt.Sprintf(":%d", *port), nil)
+		if err != nil {
+			log.Error("listen: ", err)
+		}
+	}()
 
 	if err = dealQueue(cfg); err != nil {
 		log.Fatal(err)

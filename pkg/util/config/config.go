@@ -1,14 +1,14 @@
 package config
 
 import (
-	"gopkg.in/yaml.v3"
 	"os"
 	"time"
+
+	"gopkg.in/yaml.v3"
 )
 
 type Config struct {
 	JWT      JWT      `yaml:"jwt"`
-	Redis    Redis    `yaml:"redis"`
 	RabbitMQ RabbitMQ `yaml:"rabbitmq"`
 	Minio    Minio    `yaml:"minio"`
 	Mysql    Mysql    `yaml:"mysql"`
@@ -27,12 +27,6 @@ type RabbitMQ struct {
 	Port   string `yaml:"port"`
 	User   string `yaml:"user"`
 	Passwd string `yaml:"passwd"`
-}
-
-type Redis struct {
-	Endpoint string `yaml:"endpoint"`
-	DB       int    `yaml:"db"`
-	Passwd   string `yaml:"passwd"`
 }
 
 type JWT struct {

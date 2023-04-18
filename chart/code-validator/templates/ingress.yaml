@@ -1,48 +1,39 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: spike-backend-ingress
-  annotations:
-    kubernetes.io/ingress.class: "traefik"
-    traefik.ingress.kubernetes.io/rule-type: "PathPrefixStrip"
+  name: code-backend-ingress
 spec:
+  ingressClassName: nginx
   rules:
-    - host: spike.vinf.top
+    - host: code.vinf.top
       http:
         paths:
-          - path: /users
+          - path: /api/batch
             pathType: Prefix
             backend:
               service:
-                name: spike-user-service
+                name: code-dispatcher
                 port:
                   number: 8080
-          - path: /spike
+          - path: /api/user
             pathType: Prefix
             backend:
               service:
-                name: spike-spike-service
+                name: code-user
                 port:
                   number: 8080
-          - path: /order
+          - path: /api/result
             pathType: Prefix
             backend:
               service:
-                name: spike-order-service
-                port:
-                  number: 8080
-          - path: /admin
-            pathType: Prefix
-            backend:
-              service:
-                name: spike-admin-service
+                name: code-result
                 port:
                   number: 8080
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: spike-nginx
+                name: code-nginx
                 port:
                   number: 80
 

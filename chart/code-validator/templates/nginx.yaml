@@ -1,34 +1,33 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: spike-nginx
+  name: code-nginx
   labels:
-    app: spike-nginx
+    app: code-nginx
 spec:
   ports:
     - port: 80
-      name: spike-web
-  clusterIP: None
+      name: code-web
   selector:
-    app: spike-nginx
+    app: code-nginx
 ---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: spike-web
+  name: code-web
 spec:
-  serviceName: "spike-nginx"
+  serviceName: "code-nginx"
   replicas: 1
   selector:
     matchLabels:
-      app: spike-nginx
+      app: code-nginx
   template:
     metadata:
       labels:
-        app: spike-nginx
+        app: code-nginx
     spec:
       containers:
-        - name: spike-nginx
+        - name: code-nginx
           image: docker.io/library/nginx:latest
           ports:
             - containerPort: 80

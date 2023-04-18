@@ -47,7 +47,7 @@ func main() {
 	}
 	r.GET("/metrics", util.PrometheusHandler())
 
-	router := r.Group("/user")
+	router := r.Group(util.WithGlobalAPIPrefix("/user"))
 	router.POST("/login", authMiddleware.LoginHandler)
 	router.POST("/register", registerHandler)
 	// 一组需要验证的路由

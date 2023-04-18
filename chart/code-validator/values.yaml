@@ -9,50 +9,49 @@ microservices:
     replicaCount: 1
     image: registry.cn-shanghai.aliyuncs.com/codev/dispatcher:latest
     command:
-      - /access-service
-      - --config-path=/configs/config.yaml
-    service:
-      - 8081
-
-  - name: admin-service
-    replicaCount: 1
-    image: registry.cn-shanghai.aliyuncs.com/codev/spike-admin-service:latest
-    command:
-      - /admin-service
+      - dispatcher-svc
       - --port=8080
       - --config-path=/configs/config.yaml
     service:
       - 8080
 
-  - name: order-service
-    replicaCount: 2
-    image: registry.cn-shanghai.aliyuncs.com/codev/spike-order-service:latest
-    command:
-      - /order-service
-      - --port=8080
-      - --config-path=/configs/config.yaml
-    service:
-      - 8080
-
-  - name: spike-service
-    replicaCount: 2
-    image: registry.cn-shanghai.aliyuncs.com/codev/spike-spike-service:latest
-    command:
-      - /spike-service
-      - --port=8080
-      - --config-path=/configs/config.yaml
-      - --access-endpoint=spike-access-service.default.svc:8081
-    service:
-      - 8080
-
-  - name: user-service
+  - name: user
     replicaCount: 1
     image: registry.cn-shanghai.aliyuncs.com/codev/user:latest
     command:
-      - /user-svc
+      - user-svc
       - --port=8080
       - --config-path=/configs/config.yaml
-      - --access-endpoint=spike-access-service.default.svc:8081
+    service:
+      - 8080
+
+  - name: result
+    replicaCount: 1
+    image: registry.cn-shanghai.aliyuncs.com/codev/result:latest
+    command:
+      - result-svc
+      - --port=8080
+      - --config-path=/configs/config.yaml
+    service:
+      - 8080
+
+  - name: python-actuator
+    replicaCount: 2
+    image: registry.cn-shanghai.aliyuncs.com/codev/python-actuator:latest
+    command:
+      - actuator
+      - --port=8080
+      - --config-path=/configs/config.yaml
+    service:
+      - 8080
+
+  - name: js-actuator
+    replicaCount: 2
+    image: registry.cn-shanghai.aliyuncs.com/codev/js-actuator:latest
+    command:
+      - actuator
+      - --port=8080
+      - --config-path=/configs/config.yaml
     service:
       - 8080
 

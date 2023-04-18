@@ -2,16 +2,16 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: spike-{{ .name }}
+  name: code-{{ .name }}
 spec:
   selector:
     matchLabels:
-      app: spike-{{ .name }}
+      app: code-{{ .name }}
   replicas: {{ .replicaCount }}
   template:
     metadata:
       labels:
-        app: spike-{{ .name }}
+        app: code-{{ .name }}
         date: "{{ now | unixEpoch }}"
     spec:
       containers:
@@ -24,7 +24,7 @@ spec:
           {{- end }}
           volumeMounts:
             - mountPath: /configs
-              name: access-service-volume
+              name: config-volume
           ports:
             {{- range .service }}
             - containerPort: {{.}}
@@ -34,8 +34,8 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       volumes:
-        - name: access-service-volume
+        - name: config-volume
           configMap:
-            name: spike-config
+            name: code-config
 ---
 {{- end}}
