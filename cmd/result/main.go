@@ -54,6 +54,7 @@ func main() {
 	router.Use(authMiddleware.MiddlewareFunc())
 	router.GET("/:id", getTaskDetailByID)
 	router.GET("", getResultList)
+	router.GET("/runtime/cnt", getRuntimeCnt)
 
 	util.WatchSignalGrace(r, *port)
 }
@@ -80,4 +81,13 @@ func getResultList(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, jsend.Success(tasks))
+}
+
+func getRuntimeCnt(c *gin.Context) {
+	count, err := db.Runtime7dayCount()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, jsend.SimpleErr(err.Error()))
+		return
+	}
+	c.JSON(http.StatusOK, jsend.Success(count))
 }

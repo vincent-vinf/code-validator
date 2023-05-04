@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/vincent-vinf/code-validator/pkg/types"
+
 	"github.com/vincent-vinf/code-validator/pkg/orm"
 	"github.com/vincent-vinf/code-validator/pkg/vo"
 
@@ -365,6 +367,67 @@ func UpdateSubTask(subtask *orm.SubTask) (err error) {
 	}
 
 	return
+}
+
+func runtime7dayCount(runtime string) (*vo.RuntimeDayCnt, error) {
+	db := getInstance()
+	rows, err := db.Query(`
+select ifnull(b.count,0) as cnt
+from (
+    SELECT curdate() as some_day
+    union all
+    SELECT date_sub(curdate(), interval 1 day) as some_day
+    union all
+    SELECT date_sub(curdate(), interval 2 day) as some_day
+    union all
+    SELECT date_sub(curdate(), interval 3 day) as some_day
+    union all
+    SELECT date_sub(curdate(), interval 4 day) as some_day
+    union all
+    SELECT date_sub(curdate(), interval 5 day) as some_day
+    union all
+    SELECT date_sub(curdate(), interval 6 day) as some_day
+) a left join (
+  select DATE_FORMAT(task.create_at, '%Y-%m-%d') as today, count(*) as count
+  from task, batch where batch.id = task.batch_id and batch.runtime = ?
+  group by today
+) b on a.some_day = b.today
+order by a.some_day
+`, runtime)
+	if err != nil {
+		return nil, err
+	}
+
+	cnts := make([]int, 0)
+	for rows.Next() {
+		var c int
+		if err = rows.Scan(&c); err != nil {
+			return nil, err
+		}
+		cnts = append(cnts, c)
+	}
+	res := &vo.RuntimeDayCnt{
+		Runtime: runtime,
+		Cnt:     cnts,
+	}
+
+	return res, nil
+}
+
+func Runtime7dayCount() ([]vo.RuntimeDayCnt, error) {
+	res := make([]vo.RuntimeDayCnt, 0)
+	for _, runtime := range []string{
+		types.JavaScriptRuntime,
+		types.PythonRuntime,
+	} {
+		count, err := runtime7dayCount(runtime)
+		if err != nil {
+			return nil, err
+		}
+		res = append(res, *count)
+	}
+
+	return res, nil
 }
 
 //func GetUserById(id string) (*orm.User, error) {

@@ -22,3 +22,8 @@ type SubTask struct {
 	orm.SubTask
 	VerificationName string `json:"verificationName"`
 }
+
+type RuntimeDayCnt struct {
+	Runtime string `json:"runtime,omitempty"`
+	Cnt     []int  `json:"cnt,omitempty"`
+}
